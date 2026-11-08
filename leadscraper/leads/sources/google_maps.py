@@ -4,7 +4,7 @@ from urllib.parse import quote_plus
 
 import requests
 
-from .. import GOOGLE_PLACES_API_KEY
+from .. import GOOGLE_PLACES_API_KEY, SEM_NAVEGADOR
 from ..models import Lead
 
 NOME = "Google Maps"
@@ -29,6 +29,9 @@ def buscar(p, log):
     if GOOGLE_PLACES_API_KEY:
         log(f"Google Maps (API): {consulta}")
         yield from _via_api(consulta, p, log)
+    elif SEM_NAVEGADOR:
+        log("Google Maps sem chave de API está desligado neste servidor (pouca memória para abrir navegador). "
+            "Use a fonte OpenStreetMap ou configure GOOGLE_PLACES_API_KEY.")
     else:
         log(f"Google Maps (navegador): {consulta}")
         yield from _via_navegador(consulta, p, log)

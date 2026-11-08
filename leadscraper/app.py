@@ -1,6 +1,6 @@
 from flask import Flask, Response, jsonify, render_template, request
 
-from leads import GOOGLE_PLACES_API_KEY, db, whatsapp
+from leads import GOOGLE_PLACES_API_KEY, SEM_NAVEGADOR, db, whatsapp
 from leads.export import csv_bytes, xlsx_bytes
 from leads.pipeline import JOBS, iniciar_job
 from leads.sources import FONTES, diretorio
@@ -36,6 +36,7 @@ def index():
         fontes={k: f.NOME for k, f in FONTES.items()},
         diretorios=list(diretorio.carregar()),
         tem_api_maps=bool(GOOGLE_PLACES_API_KEY),
+        sem_navegador=SEM_NAVEGADOR,
         tem_indice_cnpj=os.path.exists(INDICE),
         status=db.STATUS,
     )
@@ -61,7 +62,7 @@ def buscar():
         "headless": not b.get("mostrar_navegador"),
     }
     fontes = [f for f in b["fontes"] if f in FONTES]
-    return jsonify(job=iniciar_job(params, fontes, bool(b.get("enriquecer", True))))
+    return jsonify(job=iniciar_job(params, fontes, bool(b.get("enriquecer", True)), bool(b.get("opencnpj", True))))
 
 
 @app.get("/api/job/<job_id>")

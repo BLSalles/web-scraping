@@ -1,15 +1,16 @@
 # LeadScraper
 
-Captação de leads B2B com quatro fontes selecionáveis, painel web e fila de abordagem por WhatsApp (manual assistida, sem API).
+Captação de leads B2B com cinco fontes selecionáveis, painel web e fila de abordagem por WhatsApp (manual assistida, sem API).
 
 | Fonte | O que traz | Observação |
 |---|---|---|
+| OpenStreetMap | nome, telefone, WhatsApp, site, e-mail, endereço | Grátis, sem chave e sem navegador (API Overpass). Cobertura no Brasil é menor que a do Google, varia por cidade |
 | Google Maps | nome, telefone, site, endereço, nota, nº de avaliações | Com `GOOGLE_PLACES_API_KEY` usa a Places API oficial; sem chave, usa navegador (Playwright) |
 | Base CNPJ (Receita) | razão social, CNPJ, CNAE, porte, abertura, telefone e e-mail cadastrados | Dados abertos; precisa importar a base uma vez |
 | Sites | e-mails, WhatsApp, Instagram/Facebook/LinkedIn, CNPJ | Varre home + páginas de contato, respeita robots.txt |
 | Diretórios | o que o site de listagem mostrar | Configurável por seletor CSS em `diretorios.yaml` |
 
-Os resultados de todas as fontes são unificados (CNPJ, domínio, telefone e nome+cidade) e, opcionalmente, os sites encontrados são visitados para completar e-mail e WhatsApp.
+Leads com CNPJ são completados pelo [OpenCNPJ](https://opencnpj.org) (grátis, consulta por CNPJ). Os resultados de todas as fontes são unificados (CNPJ, domínio, telefone e nome+cidade) e, opcionalmente, os sites encontrados são visitados para completar e-mail e WhatsApp.
 
 ## Rodar local
 
@@ -60,7 +61,7 @@ python cli.py exportar leads.xlsx
 
 1. Suba o projeto no GitHub.
 2. No Render: **New > Blueprint**, escolha o repositório (ele lê o `render.yaml`).
-3. Preencha `APP_PASSWORD` (senha do painel; usuário padrão `admin`) e, se tiver, `GOOGLE_PLACES_API_KEY`.
+3. Preencha `APP_PASSWORD`, defina `SEM_NAVEGADOR=1` no plano gratuito (512 MB não comportam o navegador) (senha do painel; usuário padrão `admin`) e, se tiver, `GOOGLE_PLACES_API_KEY`.
 
 O blueprint usa plano pago com disco de 5 GB em `/var/data`, onde ficam o banco e a base CNPJ. No plano gratuito o app dorme sem uso e o disco é apagado a cada deploy, então os leads se perdem.
 

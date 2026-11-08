@@ -78,7 +78,8 @@ td a{color:var(--pri);text-decoration:none}
   <div class="card">
     <h2>Fontes</h2>
     <div class="fontes">
-      <label class="fonte"><input type="checkbox" value="google_maps" checked><div><b>Google Maps</b><small>{{ "Places API configurada" if tem_api_maps else "via navegador (sem chave de API)" }}</small></div></label>
+      <label class="fonte"><input type="checkbox" value="openstreetmap" checked><div><b>OpenStreetMap</b><small>grátis, sem chave; precisa da cidade</small></div></label>
+      <label class="fonte"><input type="checkbox" value="google_maps" {{ "checked" if tem_api_maps else "" }}><div><b>Google Maps</b><small>{{ "Places API configurada" if tem_api_maps else ("indisponível aqui sem chave de API" if sem_navegador else "via navegador (sem chave de API)") }}</small></div></label>
       <label class="fonte"><input type="checkbox" value="cnpj"><div><b>Base CNPJ (Receita)</b><small>{{ "índice pronto" if tem_indice_cnpj else "precisa importar a base antes" }}</small></div></label>
       <label class="fonte"><input type="checkbox" value="sites"><div><b>Sites específicos</b><small>cole URLs para varrer</small></div></label>
       <label class="fonte"><input type="checkbox" value="diretorios"><div><b>Diretórios</b><small>{{ diretorios|length }} configurado(s) no diretorios.yaml</small></div></label>
@@ -109,6 +110,7 @@ td a{color:var(--pri);text-decoration:none}
 
     <div style="display:flex;gap:16px;align-items:center;margin-top:16px;flex-wrap:wrap">
       <label class="chk"><input type="checkbox" id="enriquecer" checked> visitar os sites encontrados atrás de e-mail, WhatsApp e redes</label>
+      <label class="chk"><input type="checkbox" id="opencnpj" checked> completar pelo CNPJ (OpenCNPJ)</label>
       <button class="btn" id="btnBuscar">Buscar leads</button>
     </div>
   </div>
@@ -201,7 +203,7 @@ $('#btnBuscar').onclick = async () => {
     cnae: $('#cnae').value, aberta_desde: $('#aberta_desde').value, porte: [...$('#porte').selectedOptions].map(o => o.value),
     so_com_contato: $('#so_com_contato').checked, cnae_secundario: $('#cnae_secundario').checked,
     urls: $('#urls').value, diretorios: [...$('#diretorios').selectedOptions].map(o => o.value),
-    mostrar_navegador: $('#mostrar_navegador').checked, enriquecer: $('#enriquecer').checked,
+    mostrar_navegador: $('#mostrar_navegador').checked, enriquecer: $('#enriquecer').checked, opencnpj: $('#opencnpj').checked,
   };
   const r = await api('/api/buscar', {method:'POST', body: JSON.stringify(corpo)});
   if (r.erro) return alert(r.erro);

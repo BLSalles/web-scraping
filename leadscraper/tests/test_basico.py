@@ -139,3 +139,61 @@ def test_login(monkeypatch):
     assert c.get("/").status_code == 401
     assert c.get("/saude").status_code == 200
     assert c.get("/", auth=("admin", "segredo")).status_code == 200
+
+
+def test_openstreetmap(monkeypatch):
+    from leads.sources import openstreetmap as osm
+    q = osm.montar_query("clínica odontológica", "Suzano", 30)
+    assert '["amenity"="dentist"]["name"]' in q and '["amenity"="clinic"]["name"]' in q
+    assert '"name"="Suzano"' in q and "out center tags 30;" in q
+    assert osm.tags_para("bar do zé") == ['amenity"="bar', 'amenity"="pub']
+    assert osm.tags_para("barbearia") == ['shop"="hairdresser']
+
+    resposta = {"elements": [
+        {"type": "node", "id": 1, "tags": {"name": "Sorriso", "amenity": "dentist", "phone": "+55 11 4747-1234;+55 11 98765-4321",
+                                           "contact:whatsapp": "+55 11 98765-4321", "website": "https://sorriso.com.br",
+                                           "addr:street": "Rua A", "addr:housenumber": "10", "addr:suburb": "Centro", "addr:postcode": "08600-000"}},
+        {"type": "way", "id": 2, "center": {"lat": 0, "lon": 0}, "tags": {"amenity": "dentist"}},
+    ]}
+
+    class R:
+        ok = True
+        def json(self): return resposta
+
+    monkeypatch.setattr(osm.requests, "post", lambda *a, **k: R())
+    out = list(osm.buscar({"nicho": "dentista", "cidade": "Suzano", "uf": "SP", "limite": 10}, lambda *_: None))
+    assert len(out) == 1
+    l = out[0]
+    assert l.telefone == "+55 11 4747-1234" and l.whatsapp == "+55 11 98765-4321"
+    assert l.endereco == "Rua A, 10" and l.bairro == "Centro" and l.maps_url.endswith("/node/1")
+
+
+def test_opencnpj(monkeypatch):
+    from leads import opencnpj
+    from leads.models import Lead
+    from leads.normalize import limpar
+    resposta = {"cnpj": "12345678000190", "razao_social": "SORRISO ODONTO LTDA", "nome_fantasia": "SORRISO",
+                "email": "contato@sorriso.com.br", "porte_empresa": "ME",
+                "telefones": [{"ddd": "11", "numero": "47471234", "is_fax": False}, {"ddd": "11", "numero": "90000000"},
+                              {"ddd": "11", "numero": "33330000", "is_fax": True}]}
+    monkeypatch.setattr(opencnpj, "consultar", lambda c: resposta)
+    l = limpar(opencnpj.enriquecer(Lead(cnpj="12345678000190", site="sorriso.com.br")))
+    assert l.razao_social == "SORRISO ODONTO LTDA" and l.nome == "SORRISO"
+    assert l.email == "contato@sorriso.com.br" and l.telefone == "551147471234" and l.telefones_extras == []
+    assert "opencnpj" in l.fontes
+
+    aninhado = {"razaoSocial": "X LTDA", "contato": {"email": "J****@X.COM", "telefones": [{"ddd": "21", "numero": "22223333"}]}}
+    monkeypatch.setattr(opencnpj, "consultar", lambda c: aninhado)
+    l = limpar(opencnpj.enriquecer(Lead(cnpj="11111111000111")))
+    assert l.razao_social == "X LTDA" and l.email == "" and l.telefone == "552122223333"
+
+
+def test_sem_navegador(monkeypatch):
+    monkeypatch.setenv("SEM_NAVEGADOR", "1")
+    import leads
+    importlib.reload(leads)
+    from leads.sources import google_maps
+    importlib.reload(google_maps)
+    logs = []
+    assert list(google_maps.buscar({"nicho": "x", "cidade": "y", "limite": 5}, logs.append)) == []
+    assert "desligado" in logs[0]

@@ -3,14 +3,14 @@ import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 
-from . import db
+from . import db, opencnpj
 from .normalize import deduplicar
 from .sources import FONTES, websites
 
 JOBS: dict[str, dict] = {}
 
 
-def rodar(params, fontes, enriquecer_sites=True, log=print):
+def rodar(params, fontes, enriquecer_sites=True, log=print, usar_opencnpj=True):
     coletados = []
     for chave in fontes:
         fonte = FONTES[chave]
@@ -34,13 +34,21 @@ def rodar(params, fontes, enriquecer_sites=True, log=print):
                         log(f"  {i}/{len(com_site)} sites")
             leads = deduplicar(leads)
 
+    if usar_opencnpj:
+        com_cnpj = [l for l in leads if l.cnpj and not (l.telefone and l.email and l.razao_social)]
+        if com_cnpj:
+            log(f"completando {len(com_cnpj)} leads pelo CNPJ (OpenCNPJ)...")
+            with ThreadPoolExecutor(max_workers=4) as ex:
+                list(ex.map(opencnpj.enriquecer, com_cnpj))
+            leads = deduplicar(leads)
+
     rotulo = f"{params['nicho']} - {params.get('cidade') or params.get('uf') or 'BR'} ({time.strftime('%d/%m %H:%M')})"
     novos, atualizados = db.salvar(leads, busca=rotulo)
     log(f"salvo: {novos} novos, {atualizados} já existiam e foram completados")
     return rotulo
 
 
-def iniciar_job(params, fontes, enriquecer_sites=True):
+def iniciar_job(params, fontes, enriquecer_sites=True, usar_opencnpj=True):
     job_id = uuid.uuid4().hex[:8]
     job = {"id": job_id, "status": "rodando", "log": [], "busca": None}
     JOBS[job_id] = job
@@ -50,7 +58,7 @@ def iniciar_job(params, fontes, enriquecer_sites=True):
 
     def alvo():
         try:
-            job["busca"] = rodar(params, fontes, enriquecer_sites, log)
+            job["busca"] = rodar(params, fontes, enriquecer_sites, log, usar_opencnpj)
             job["status"] = "concluido"
         except Exception as e:
             log(f"erro: {e}")
