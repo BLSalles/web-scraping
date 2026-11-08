@@ -27,6 +27,12 @@ def main():
     i = sub.add_parser("cnpj-importar", help="monta o índice local a partir dos zips")
     i.add_argument("--uf", action="append", help="pode repetir: --uf SP --uf MG")
     i.add_argument("--cnae-prefixo", action="append", help="filtra CNAE principal, ex.: --cnae-prefixo 86")
+    i.add_argument("--sem-mei", action="store_true", help="remove MEI (precisa do Simples.zip)")
+    i.add_argument("--so-com-contato", action="store_true", help="só empresas com telefone ou e-mail")
+    i.add_argument("--preset", choices=sorted(cnpj.PRESETS), help="configuração pronta; também gera a base compactada em base/")
+
+    pb = sub.add_parser("cnpj-publicar", help="compacta o índice atual em base/ para subir no GitHub")
+    pb.add_argument("nome")
 
     e = sub.add_parser("exportar")
     e.add_argument("arquivo", help="leads.xlsx ou leads.csv")
@@ -41,7 +47,12 @@ def main():
     elif a.cmd == "cnpj-baixar":
         cnpj.baixar(a.mes)
     elif a.cmd == "cnpj-importar":
-        cnpj.importar(a.uf, a.cnae_prefixo)
+        if a.preset:
+            cnpj.importar_preset(a.preset)
+        else:
+            cnpj.importar(a.uf, a.cnae_prefixo, a.sem_mei, a.so_com_contato)
+    elif a.cmd == "cnpj-publicar":
+        cnpj.publicar(a.nome)
     elif a.cmd == "exportar":
         dados = db.listar(status=a.status)
         conteudo = xlsx_bytes(dados) if a.arquivo.endswith(".xlsx") else csv_bytes(dados)

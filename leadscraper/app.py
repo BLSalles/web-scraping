@@ -4,8 +4,9 @@ from leads import GOOGLE_PLACES_API_KEY, SEM_NAVEGADOR, db, whatsapp
 from leads.export import csv_bytes, xlsx_bytes
 from leads.pipeline import JOBS, iniciar_job
 from leads.sources import FONTES, diretorio
-from leads.sources.cnpj import INDICE
+from leads.sources.cnpj import BASE_DIR, INDICE
 
+import glob
 import hmac
 import os
 
@@ -37,7 +38,7 @@ def index():
         diretorios=list(diretorio.carregar()),
         tem_api_maps=bool(GOOGLE_PLACES_API_KEY),
         sem_navegador=SEM_NAVEGADOR,
-        tem_indice_cnpj=os.path.exists(INDICE),
+        tem_indice_cnpj=os.path.exists(INDICE) or bool(glob.glob(os.path.join(BASE_DIR, "indice_*.db.gz"))),
         status=db.STATUS,
     )
 

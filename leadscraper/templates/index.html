@@ -3,127 +3,211 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>LeadScraper</title>
+<title>SolarLeads</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Sora:wght@600;700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='7' fill='%23f59e0b'/%3E%3Cg stroke='%23f59e0b' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M16 2v4M16 26v4M2 16h4M26 16h4M6 6l3 3M23 23l3 3M6 26l3-3M23 9l3-3'/%3E%3C/g%3E%3C/svg%3E">
 <style>
-:root{--bg:#f5f6f8;--card:#fff;--txt:#1d2433;--sub:#667085;--borda:#e3e6eb;--pri:#1f6feb;--ok:#16a34a;--wa:#1fa855;--ruim:#dc2626}
+:root{
+  --ceu:#0b1b33;--ceu2:#14325c;--sol:#f59e0b;--sol2:#f97316;--sol-claro:#fff4dc;
+  --bg:#f7f4ec;--card:#fff;--txt:#14213d;--sub:#5f6b7f;--borda:#e8e2d3;
+  --verde:#16a34a;--verde-claro:#e8f8ee;--wa:#1fa855;--ruim:#dc2626;
+  --sombra:0 1px 2px rgba(20,33,61,.05),0 8px 24px -12px rgba(20,33,61,.18);
+}
 *{box-sizing:border-box}
-body{margin:0;font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt)}
-header{background:#111827;color:#fff;padding:14px 20px;display:flex;gap:20px;align-items:center;flex-wrap:wrap}
-header b{font-size:17px}
-nav button{background:none;border:0;color:#9ca3af;font:inherit;padding:6px 10px;cursor:pointer;border-radius:6px}
-nav button.ativo{color:#fff;background:#374151}
-main{max-width:1200px;margin:0 auto;padding:20px 16px}
+body{margin:0;font:14px/1.5 Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt)}
+h1,h2,h3,.marca{font-family:Sora,Inter,sans-serif}
+
+header{background:radial-gradient(1200px 300px at 85% -40%,rgba(249,115,22,.55),transparent 60%),linear-gradient(135deg,var(--ceu),var(--ceu2));color:#fff}
+.topo{max-width:1200px;margin:0 auto;padding:18px 16px 0;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.logo{width:42px;height:42px;flex:none;filter:drop-shadow(0 0 12px rgba(245,158,11,.6))}
+.marca{font-size:21px;font-weight:700;letter-spacing:-.3px}
+.marca span{color:var(--sol)}
+.slogan{font-size:12.5px;color:#b9c6dc;margin-top:1px}
+nav{max-width:1200px;margin:0 auto;padding:16px 16px 0;display:flex;gap:4px;overflow-x:auto}
+nav button{background:none;border:0;color:#b9c6dc;font:600 14px Inter,sans-serif;padding:10px 18px;cursor:pointer;border-radius:10px 10px 0 0;white-space:nowrap}
+nav button:hover{color:#fff}
+nav button.ativo{color:var(--txt);background:var(--bg)}
+
+main{max-width:1200px;margin:0 auto;padding:22px 16px 40px}
 .aba{display:none}.aba.ativo{display:block}
-.card{background:var(--card);border:1px solid var(--borda);border-radius:10px;padding:18px;margin-bottom:16px}
-h2{font-size:15px;margin:0 0 12px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
-label{display:block;font-size:12px;color:var(--sub);margin-bottom:4px}
-input,select,textarea{width:100%;padding:8px 10px;border:1px solid var(--borda);border-radius:7px;font:inherit;background:#fff}
+.card{background:var(--card);border:1px solid var(--borda);border-radius:16px;padding:20px;margin-bottom:16px;box-shadow:var(--sombra)}
+h2{font-size:16px;margin:0 0 4px;letter-spacing:-.2px}
+.desc{color:var(--sub);font-size:13px;margin:0 0 14px}
+
+.hero{background:linear-gradient(120deg,#fff 40%,var(--sol-claro));position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;right:-60px;top:-60px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(245,158,11,.35),transparent 70%);pointer-events:none}
+.hero h1{font-size:22px;margin:0 0 4px;letter-spacing:-.4px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 18px}
+.chip{border:1px solid var(--borda);background:#fff;border-radius:999px;padding:7px 14px;font:500 13px Inter,sans-serif;color:var(--txt);cursor:pointer;transition:.15s}
+.chip:hover{border-color:var(--sol);background:var(--sol-claro)}
+.chips .chip.on{background:var(--txt);color:#fff;border-color:var(--txt)}
+.chips .chip.on::before{content:"☀ ";color:var(--sol)}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+label{display:block;font-size:12px;font-weight:500;color:var(--sub);margin-bottom:5px}
+input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--borda);border-radius:10px;font:inherit;background:#fff;color:var(--txt);transition:.15s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--sol);box-shadow:0 0 0 3px rgba(245,158,11,.18)}
 textarea{resize:vertical}
-.fontes{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
-.fonte{border:1px solid var(--borda);border-radius:8px;padding:10px 12px;cursor:pointer;display:flex;gap:10px}
-.fonte input{width:auto;margin-top:3px}
-.fonte small{display:block;color:var(--sub)}
-.extra{display:none;margin-top:12px;padding-top:12px;border-top:1px dashed var(--borda)}
+
+.fontes{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
+.fonte{border:1px solid var(--borda);border-radius:12px;padding:12px 14px;cursor:pointer;display:flex;gap:10px;margin:0;color:var(--txt);font-size:14px;transition:.15s}
+.fonte:hover{border-color:#d9c9a3}
+.fonte:has(input:checked){border-color:var(--sol);background:var(--sol-claro)}
+.fonte input,.chk input{width:auto;margin-top:3px;accent-color:var(--sol2)}
+.fonte small{display:block;color:var(--sub);font-size:12px;font-weight:400}
+.extra{display:none;margin-top:14px;padding-top:14px;border-top:1px dashed var(--borda)}
 .extra.on{display:block}
-.chk{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--txt)}
-.chk input{width:auto}
-button.btn{background:var(--pri);color:#fff;border:0;padding:9px 16px;border-radius:7px;font:inherit;font-weight:600;cursor:pointer}
-button.sec{background:#fff;color:var(--txt);border:1px solid var(--borda)}
-button.wa{background:var(--wa)}
-button.ruim{background:#fff;color:var(--ruim);border:1px solid #fecaca}
-button:disabled{opacity:.45;cursor:not-allowed}
-pre#log{background:#0b1020;color:#c7d2fe;padding:12px;border-radius:8px;max-height:260px;overflow:auto;font-size:12px;white-space:pre-wrap;margin:0}
-.barra{display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-bottom:12px}
+.chk{display:flex;gap:7px;align-items:center;font-size:13px;color:var(--txt);margin:0;font-weight:400}
+.rodape-busca{display:flex;gap:18px;align-items:center;margin-top:18px;flex-wrap:wrap}
+
+.btn{background:linear-gradient(135deg,var(--sol),var(--sol2));color:#fff;border:0;padding:11px 20px;border-radius:10px;font:600 14px Inter,sans-serif;cursor:pointer;box-shadow:0 6px 16px -6px rgba(249,115,22,.6);transition:.15s}
+.btn:hover{transform:translateY(-1px)}
+.btn.sec{background:#fff;color:var(--txt);border:1px solid var(--borda);box-shadow:none}
+.btn.wa{background:var(--wa);box-shadow:0 6px 16px -6px rgba(31,168,85,.6)}
+.btn.ruim{background:#fff;color:var(--ruim);border:1px solid #fecaca;box-shadow:none}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.ml-auto{margin-left:auto}
+
+pre#log{background:var(--ceu);color:#fde7b5;padding:14px;border-radius:12px;max-height:260px;overflow:auto;font:12px/1.6 ui-monospace,Consolas,monospace;white-space:pre-wrap;margin:0}
+
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:var(--card);border:1px solid var(--borda);border-radius:14px;padding:14px 16px;box-shadow:var(--sombra)}
+.kpi small{color:var(--sub);font-size:12px;font-weight:500}
+.kpi b{display:block;font:700 26px Sora,sans-serif;letter-spacing:-.5px;margin-top:2px}
+.kpi.sol b{color:var(--sol2)}.kpi.verde b{color:var(--verde)}
+.barra{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
 .barra>div{min-width:160px}
-.tabela{overflow:auto;max-height:65vh;border:1px solid var(--borda);border-radius:8px}
-table{border-collapse:collapse;width:100%;font-size:13px;background:#fff}
-th,td{padding:7px 9px;border-bottom:1px solid var(--borda);text-align:left;vertical-align:top;white-space:nowrap}
-th{position:sticky;top:0;background:#f9fafb;font-weight:600}
-td.nome{white-space:normal;min-width:200px}
-td a{color:var(--pri);text-decoration:none}
-.tag{display:inline-block;padding:1px 7px;border-radius:99px;background:#eef2ff;color:#3730a3;font-size:11px;margin-right:3px}
-.cont{display:flex;gap:14px;flex-wrap:wrap;color:var(--sub);font-size:13px}
+.tabela{overflow:auto;max-height:65vh;border:1px solid var(--borda);border-radius:14px;background:#fff;box-shadow:var(--sombra)}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:10px 12px;border-bottom:1px solid #f1ece0;text-align:left;vertical-align:top;white-space:nowrap}
+th{position:sticky;top:0;background:#fbf8f1;font-weight:600;color:var(--sub);font-size:12px;text-transform:uppercase;letter-spacing:.4px;z-index:1}
+tbody tr:hover{background:#fffbf1}
+td.nome{white-space:normal;min-width:200px;max-width:280px}
+td.email{white-space:normal;word-break:break-all;min-width:160px}
+td a{color:var(--sol2);text-decoration:none;font-weight:500}
+td select{padding:5px 8px;border-radius:999px;font-size:12px;width:auto;font-weight:600}
+td select[data-s="novo"]{background:#eef2ff;color:#3730a3;border-color:#e0e7ff}
+td select[data-s="contatado"]{background:var(--sol-claro);color:#b45309;border-color:#fde68a}
+td select[data-s="respondeu"]{background:#e0f2fe;color:#0369a1;border-color:#bae6fd}
+td select[data-s="cliente"]{background:var(--verde-claro);color:#15803d;border-color:#bbf7d0}
+td select[data-s="descartado"]{background:#f4f4f5;color:#71717a;border-color:#e4e4e7}
+td .btn.sec{padding:4px 9px;font-size:12px}
+.tag{display:inline-block;padding:2px 8px;border-radius:999px;background:var(--sol-claro);color:#b45309;font-size:11px;font-weight:500;margin:0 3px 3px 0}
+.cont{display:flex;gap:14px;flex-wrap:wrap;color:var(--sub);font-size:13px;margin-top:10px}
 .cont b{color:var(--txt)}
-.aviso{background:#fffbeb;border:1px solid #fde68a;color:#92400e;padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:12px}
-.fila-card{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-@media(max-width:760px){.fila-card{grid-template-columns:1fr}}
-.acoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-.grande{font-size:18px;font-weight:600}
+.vazio{text-align:center;color:var(--sub);padding:40px 16px}
+
+.aviso{background:var(--verde-claro);border:1px solid #bbf7d0;color:#14532d;padding:12px 14px;border-radius:12px;font-size:13px;margin-bottom:16px}
+.fila-card{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:760px){.fila-card{grid-template-columns:1fr}.topo{padding-top:14px}}
+.acoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.grande{font:700 20px Sora,sans-serif;letter-spacing:-.3px}
 .muted{color:var(--sub)}
 </style>
 </head>
 <body>
 <header>
-  <b>LeadScraper</b>
+  <div class="topo">
+    <svg class="logo" viewBox="0 0 48 48" aria-hidden="true">
+      <circle cx="24" cy="20" r="8" fill="#f59e0b"/>
+      <g stroke="#fbbf24" stroke-width="2.4" stroke-linecap="round">
+        <path d="M24 4v4M24 32v2M8 20h4M36 20h4M12.7 8.7l2.8 2.8M32.5 28.5l1.8 1.8M12.7 31.3l2.8-2.8M32.5 11.5l2.8-2.8"/>
+      </g>
+      <path d="M8 44l5-12h22l5 12z" fill="#2b6cb0"/>
+      <path d="M13 32l-5 12M20.3 32l-1.7 12M27.7 32l1.7 12M35 32l5 12M10.5 38h27" stroke="#9cc3f0" stroke-width="1.3"/>
+    </svg>
+    <div>
+      <div class="marca">Solar<span>Leads</span></div>
+      <div class="slogan">Prospecção de empresas para energia solar</div>
+    </div>
+  </div>
   <nav>
-    <button data-aba="buscar" class="ativo">Buscar</button>
-    <button data-aba="leads">Leads</button>
-    <button data-aba="wa">WhatsApp</button>
+    <button data-aba="buscar" class="ativo">Prospectar</button>
+    <button data-aba="leads">Meus leads</button>
+    <button data-aba="wa">Abordagem WhatsApp</button>
   </nav>
 </header>
 
 <main>
 <section id="buscar" class="aba ativo">
-  <div class="card">
-    <h2>O que você procura</h2>
+  <div class="card hero">
+    <h1>Encontre quem paga caro na conta de luz</h1>
+    <p class="desc">Escolha um segmento de alto consumo de energia, a cidade, e o SolarLeads monta a lista com telefone, WhatsApp e e-mail.</p>
+    <div class="chips" id="chips">
+      <button class="chip" data-nicho="todos" data-cnae="">Todos os segmentos</button>
+      <button class="chip" data-nicho="supermercado" data-cnae="4711301,4711302,4712100">Supermercados</button>
+      <button class="chip" data-nicho="padaria" data-cnae="1091102,4721102">Padarias</button>
+      <button class="chip" data-nicho="restaurante" data-cnae="5611201,5611203">Restaurantes</button>
+      <button class="chip" data-nicho="academia" data-cnae="9313100">Academias</button>
+      <button class="chip" data-nicho="hotel" data-cnae="5510801,5510802">Hotéis</button>
+      <button class="chip" data-nicho="posto de combustível" data-cnae="4731800">Postos</button>
+      <button class="chip" data-nicho="clínica" data-cnae="8610101,8630501,8630502,8630503,8630504,8640202,8640205">Clínicas e hospitais</button>
+      <button class="chip" data-nicho="escola" data-cnae="8511200,8512100,8513900,8520100">Escolas</button>
+      <button class="chip" data-nicho="condomínio" data-cnae="8112500">Condomínios</button>
+      <button class="chip" data-nicho="indústria" data-cnae="2539001,2222600,1813001,1052000,1053800">Indústrias</button>
+      <button class="chip" data-nicho="granja" data-cnae="0155501,0155505,0154700">Agro / granjas</button>
+    </div>
     <div class="grid">
-      <div><label>Nicho / segmento *</label><input id="nicho" placeholder="ex.: clínica odontológica"></div>
+      <div><label>Segmento *</label><input id="nicho" placeholder="ex.: supermercado"></div>
       <div><label>Cidade</label><input id="cidade" placeholder="ex.: Mogi das Cruzes"></div>
-      <div><label>UF</label><input id="uf" maxlength="2" placeholder="SP"></div>
-      <div><label>Limite por fonte</label><input id="limite" type="number" value="50" min="1" max="2000"></div>
+      <div><label>UF</label><input id="uf" maxlength="2" placeholder="SP" value="SP"></div>
+      <div><label>Quantidade por fonte</label><input id="limite" type="number" value="50" min="1" max="2000"></div>
     </div>
   </div>
 
   <div class="card">
-    <h2>Fontes</h2>
+    <h2>De onde buscar</h2>
+    <p class="desc">Marque uma ou mais fontes. Os resultados são unificados e os duplicados somem.</p>
     <div class="fontes">
-      <label class="fonte"><input type="checkbox" value="openstreetmap" checked><div><b>OpenStreetMap</b><small>grátis, sem chave; precisa da cidade</small></div></label>
-      <label class="fonte"><input type="checkbox" value="google_maps" {{ "checked" if tem_api_maps else "" }}><div><b>Google Maps</b><small>{{ "Places API configurada" if tem_api_maps else ("indisponível aqui sem chave de API" if sem_navegador else "via navegador (sem chave de API)") }}</small></div></label>
-      <label class="fonte"><input type="checkbox" value="cnpj"><div><b>Base CNPJ (Receita)</b><small>{{ "índice pronto" if tem_indice_cnpj else "precisa importar a base antes" }}</small></div></label>
-      <label class="fonte"><input type="checkbox" value="sites"><div><b>Sites específicos</b><small>cole URLs para varrer</small></div></label>
-      <label class="fonte"><input type="checkbox" value="diretorios"><div><b>Diretórios</b><small>{{ diretorios|length }} configurado(s) no diretorios.yaml</small></div></label>
+      <label class="fonte"><input type="checkbox" value="cnpj" {{ "checked" if tem_indice_cnpj else "" }}><div><b>Base CNPJ (Receita)</b><small>{{ "pronta: empresas ativas com contato" if tem_indice_cnpj else "precisa gerar a base antes" }}</small></div></label>
+      <label class="fonte"><input type="checkbox" value="openstreetmap" {{ "" if tem_indice_cnpj else "checked" }}><div><b>OpenStreetMap</b><small>grátis; cobertura varia por cidade</small></div></label>
+      <label class="fonte"><input type="checkbox" value="google_maps" {{ "checked" if tem_api_maps else "" }}><div><b>Google Maps</b><small>{{ "Places API configurada" if tem_api_maps else ("precisa de chave de API aqui" if sem_navegador else "via navegador") }}</small></div></label>
+      <label class="fonte"><input type="checkbox" value="sites"><div><b>Sites específicos</b><small>cole endereços para varrer</small></div></label>
+      <label class="fonte"><input type="checkbox" value="diretorios"><div><b>Diretórios</b><small>{{ diretorios|length }} configurado(s)</small></div></label>
     </div>
 
     <div class="extra" data-de="cnpj">
       <div class="grid">
-        <div><label>Código(s) CNAE (opcional, separados por vírgula)</label><input id="cnae" placeholder="ex.: 8630504, 8630501"></div>
+        <div><label>Código(s) CNAE</label><input id="cnae" placeholder="preenchido pelo segmento"></div>
         <div><label>Aberta desde</label><input id="aberta_desde" type="date"></div>
         <div><label>Porte</label>
-          <select id="porte" multiple size="3"><option value="01">ME</option><option value="03">EPP</option><option value="05">Demais</option></select></div>
+          <select id="porte" multiple size="3"><option value="01">ME</option><option value="03">EPP</option><option value="05">Demais (médio/grande)</option></select></div>
       </div>
-      <div style="display:flex;gap:16px;margin-top:10px;flex-wrap:wrap">
+      <div style="display:flex;gap:18px;margin-top:12px;flex-wrap:wrap">
         <label class="chk"><input type="checkbox" id="so_com_contato" checked> só com telefone ou e-mail</label>
         <label class="chk"><input type="checkbox" id="cnae_secundario"> incluir CNAE secundário</label>
       </div>
     </div>
     <div class="extra" data-de="sites">
-      <label>URLs (uma por linha)</label><textarea id="urls" rows="4" placeholder="empresa1.com.br&#10;empresa2.com.br"></textarea>
+      <label>Endereços (um por linha)</label><textarea id="urls" rows="4" placeholder="empresa1.com.br&#10;empresa2.com.br"></textarea>
     </div>
     <div class="extra" data-de="diretorios">
       <label>Diretórios</label>
       <select id="diretorios" multiple size="3">{% for d in diretorios %}<option selected>{{ d }}</option>{% endfor %}</select>
     </div>
     <div class="extra" data-de="google_maps">
-      <label class="chk"><input type="checkbox" id="mostrar_navegador"> mostrar o navegador enquanto busca (só local)</label>
+      <label class="chk"><input type="checkbox" id="mostrar_navegador"> mostrar o navegador enquanto busca (só no PC)</label>
     </div>
 
-    <div style="display:flex;gap:16px;align-items:center;margin-top:16px;flex-wrap:wrap">
-      <label class="chk"><input type="checkbox" id="enriquecer" checked> visitar os sites encontrados atrás de e-mail, WhatsApp e redes</label>
-      <label class="chk"><input type="checkbox" id="opencnpj" checked> completar pelo CNPJ (OpenCNPJ)</label>
-      <button class="btn" id="btnBuscar">Buscar leads</button>
+    <div class="rodape-busca">
+      <label class="chk"><input type="checkbox" id="enriquecer" checked> buscar e-mail e WhatsApp nos sites</label>
+      <label class="chk"><input type="checkbox" id="opencnpj" checked> completar pelo CNPJ</label>
+      <button class="btn ml-auto" id="btnBuscar">☀ Buscar empresas</button>
     </div>
   </div>
 
-  <div class="card"><h2>Andamento</h2><pre id="log">Nenhuma busca ainda.</pre></div>
+  <div class="card"><h2>Andamento</h2><p class="desc">Acompanhe a busca em tempo real.</p><pre id="log">Nenhuma busca ainda.</pre></div>
 </section>
 
 <section id="leads" class="aba">
+  <div class="kpis" id="kpis"></div>
   <div class="card">
     <div class="barra">
       <div><label>Busca</label><select id="fBusca"><option value="">todas</option></select></div>
       <div><label>Status</label><select id="fStatus"><option value="">todos</option>{% for s in status %}<option>{{ s }}</option>{% endfor %}</select></div>
-      <div style="flex:1"><label>Texto</label><input id="fTexto" placeholder="nome, bairro, e-mail..."></div>
+      <div style="flex:1"><label>Procurar</label><input id="fTexto" placeholder="nome, bairro, e-mail..."></div>
       <button class="btn sec" id="btnFiltrar">Filtrar</button>
       <button class="btn sec" onclick="exportar('xlsx')">Excel</button>
       <button class="btn sec" onclick="exportar('csv')">CSV</button>
@@ -131,24 +215,28 @@ td a{color:var(--pri);text-decoration:none}
     <div class="cont" id="contagem"></div>
   </div>
   <div class="tabela"><table><thead><tr>
-    <th>Nome</th><th>Telefone</th><th>WhatsApp</th><th>E-mail</th><th>Site / redes</th><th>Cidade</th><th>Nota</th><th>Fontes</th><th>Status</th><th></th>
+    <th>Empresa</th><th>Status</th><th>Telefone</th><th>WhatsApp</th><th>E-mail</th><th>Site / redes</th><th>Local</th><th>Nota</th><th>Fontes</th><th></th>
   </tr></thead><tbody id="tbody"></tbody></table></div>
 </section>
 
 <section id="wa" class="aba">
-  <div class="aviso">Envio manual assistido: o sistema abre a conversa com o texto pronto e você aperta enviar. Respeite o intervalo e o limite diário para não ter o número bloqueado, e sempre ofereça a opção de sair.</div>
+  <div class="aviso">Envio assistido: o SolarLeads abre a conversa com o texto pronto e você só aperta enviar. Respeite o intervalo e o limite diário para não ter o número bloqueado, e sempre ofereça a opção de sair.</div>
   <div class="card">
+    <h2>Mensagem</h2>
+    <p class="desc">Use variáveis para personalizar cada envio.</p>
     <div class="barra">
       <div style="flex:1"><label>Modelo</label><select id="modeloSel"></select></div>
       <div><label>Nome do modelo</label><input id="modeloNome"></div>
       <button class="btn sec" id="btnNovoModelo">Novo</button>
       <button class="btn sec" id="btnSalvarModelo">Salvar modelo</button>
     </div>
-    <label>Texto <span class="muted" id="vars"></span></label>
-    <textarea id="modeloTexto" rows="6"></textarea>
+    <label style="margin-top:12px">Texto <span class="muted" id="vars"></span></label>
+    <textarea id="modeloTexto" rows="7"></textarea>
   </div>
 
   <div class="card">
+    <h2>Fila de envio</h2>
+    <p class="desc">Leads com WhatsApp e status "novo".</p>
     <div class="barra">
       <div><label>Busca</label><select id="filaBusca"><option value="">todas</option></select></div>
       <div><label>Abrir em</label><select id="filaWeb"><option value="1">WhatsApp Web</option><option value="0">App (wa.me)</option></select></div>
@@ -192,6 +280,14 @@ $$('nav button').forEach(b => b.onclick = () => {
   if (b.dataset.aba === 'leads') carregarLeads();
   if (b.dataset.aba === 'wa') carregarModelos();
 });
+
+$$('.chip').forEach(c => c.onclick = () => {
+  $$('.chip').forEach(x => x.classList.remove('on'));
+  c.classList.add('on');
+  $('#nicho').value = c.dataset.nicho;
+  $('#cnae').value = c.dataset.cnae;
+});
+$('#nicho').oninput = () => { $$('.chip').forEach(x => x.classList.remove('on')); $('#cnae').value = ''; };
 
 const sincExtras = () => $$('.fonte input').forEach(i => $(`.extra[data-de="${i.value}"]`)?.classList.toggle('on', i.checked));
 $$('.fonte input').forEach(i => i.onchange = sincExtras); sincExtras();
@@ -238,17 +334,23 @@ function preencherBuscas(sel, lista) {
 async function carregarLeads() {
   const r = await api('/api/leads?' + query());
   preencherBuscas($('#fBusca'), r.buscas); preencherBuscas($('#filaBusca'), r.buscas);
-  $('#contagem').innerHTML = `<span><b>${r.leads.length}</b> exibidos</span>` + Object.entries(r.contagem).map(([k,v]) => `<span>${k}: <b>${v}</b></span>`).join('');
+  const c = r.contagem, total = Object.values(c).reduce((a,b) => a+b, 0);
+  $('#kpis').innerHTML = [
+    ['Leads na base', total, ''], ['Novos', c.novo || 0, 'sol'], ['Contatados', c.contatado || 0, ''],
+    ['Responderam', c.respondeu || 0, ''], ['Clientes', c.cliente || 0, 'verde'],
+  ].map(([t,v,cl]) => `<div class="kpi ${cl}"><small>${t}</small><b>${v}</b></div>`).join('');
+  $('#contagem').innerHTML = `<span><b>${r.leads.length}</b> exibidos com os filtros atuais</span>`;
+  if (!r.leads.length) { $('#tbody').innerHTML = '<tr><td colspan="10" class="vazio">Nenhum lead ainda. Faça uma busca na aba Prospectar.</td></tr>'; return; }
   $('#tbody').innerHTML = r.leads.map(l => `<tr>
-    <td class="nome"><b>${esc(l.nome)}</b>${l.razao_social && l.razao_social !== l.nome ? `<br><span class="muted">${esc(l.razao_social)}</span>` : ''}${l.cnpj ? `<br><span class="muted">${l.cnpj}</span>` : ''}</td>
+    <td class="nome"><b>${esc(l.nome)}</b>${l.razao_social && l.razao_social !== l.nome ? `<br><span class="muted">${esc(l.razao_social)}</span>` : ''}${l.cnpj ? `<br><span class="muted">${l.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')}</span>` : ''}</td>
+    <td><select data-s="${l.status}" onchange="this.dataset.s=this.value; mudarStatus(${l.id}, this.value)">${STATUS.map(s => `<option ${s===l.status?'selected':''}>${s}</option>`).join('')}</select></td>
     <td>${fone(l.telefone)}${l.telefones_extras.length ? `<br><span class="muted">+${l.telefones_extras.length}</span>` : ''}</td>
     <td>${l.whatsapp ? `<a href="https://wa.me/${l.whatsapp}" target="wa">${fone(l.whatsapp)}</a>` : ''}${l.optout ? ' <span class="tag">opt-out</span>' : ''}</td>
-    <td>${esc(l.email)}${l.emails_extras.length ? `<br><span class="muted">+${l.emails_extras.length}</span>` : ''}</td>
+    <td class="email">${esc(l.email)}${l.emails_extras.length ? `<br><span class="muted">+${l.emails_extras.length}</span>` : ''}</td>
     <td>${l.site ? `<a href="${esc(l.site)}" target="_blank">site</a> ` : ''}${l.instagram ? `<a href="${esc(l.instagram)}" target="_blank">insta</a> ` : ''}${l.facebook ? `<a href="${esc(l.facebook)}" target="_blank">fb</a> ` : ''}${l.linkedin ? `<a href="${esc(l.linkedin)}" target="_blank">in</a> ` : ''}${l.maps_url ? `<a href="${esc(l.maps_url)}" target="_blank">mapa</a>` : ''}</td>
     <td>${esc(l.bairro)}${l.bairro ? '<br>' : ''}${esc(l.cidade)} ${esc(l.uf)}</td>
     <td>${l.nota ?? ''}${l.avaliacoes ? ` <span class="muted">(${l.avaliacoes})</span>` : ''}</td>
     <td>${l.fontes.map(f => `<span class="tag">${esc(f)}</span>`).join('')}</td>
-    <td><select onchange="mudarStatus(${l.id}, this.value)">${STATUS.map(s => `<option ${s===l.status?'selected':''}>${s}</option>`).join('')}</select></td>
     <td><button class="btn sec" style="padding:4px 8px" onclick="excluir(${l.id})">×</button></td>
   </tr>`).join('');
 }

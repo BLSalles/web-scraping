@@ -27,6 +27,19 @@ Abra http://localhost:5000
 
 ## Base CNPJ
 
+### Pacote energia solar (recomendado)
+
+Empresas ativas de SP, sem MEI, com telefone ou e-mail, nos ramos com conta de luz alta (supermercados, padarias, restaurantes, academias, hotéis, postos, clínicas, hospitais, escolas, condomínios, indústrias leves, granjas, armazéns, igrejas...). Roda no seu PC e gera `base/indice_solar.db.gz`, que sobe pro GitHub junto com o código; o servidor descompacta sozinho na primeira busca.
+
+```bash
+python cli.py cnpj-baixar 2026-10
+python cli.py cnpj-importar --preset solar
+```
+
+Na busca, use o nicho `todos` para trazer todos os ramos do pacote, ou um ramo específico (`supermercados`, `restaurantes`, `condominios`...).
+
+### Base personalizada
+
 São ~8 GB de zips. Baixe só uma vez e importe filtrando pelo que interessa, para o índice ficar pequeno:
 
 ```bash

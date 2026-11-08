@@ -144,9 +144,11 @@ def modelos():
         rows = [dict(r) for r in con.execute("SELECT * FROM modelos ORDER BY id")]
         if not rows:
             con.execute("INSERT INTO modelos (nome, texto) VALUES (?,?)", (
-                "Primeiro contato",
-                "Olá, tudo bem? Falo com a {nome}?\n\nVi vocês aqui em {cidade} e queria entender rapidinho como vocês fazem hoje [seu assunto]. "
-                "Posso te mandar uma ideia em 2 linhas?\n\nSe preferir não receber mensagens, é só responder SAIR.",
+                "Primeiro contato - energia solar",
+                "Olá, tudo bem? Falo com a {nome}?\n\nTrabalho com energia solar aqui na região de {cidade} e tenho ajudado empresas "
+                "a reduzir bastante a conta de luz, com o sistema se pagando com a própria economia.\n\n"
+                "Posso fazer uma simulação gratuita pra vocês? Só preciso de uma foto da última conta de energia.\n\n"
+                "Se preferir não receber mensagens, é só responder SAIR.",
             ))
             rows = [dict(r) for r in con.execute("SELECT * FROM modelos ORDER BY id")]
     return rows

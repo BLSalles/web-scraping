@@ -1,8 +1,10 @@
 import csv
 import glob
+import gzip
 import io
 import os
 import re
+import shutil
 import sqlite3
 import sys
 import zipfile
@@ -17,6 +19,27 @@ NOME = "Base CNPJ (Receita)"
 INDICE = os.path.join(CNPJ_DIR, "indice.db")
 BASE_URL = "https://arquivos.receitafederal.gov.br/dados/cnpj/dados_abertos_cnpj/{mes}/"
 PORTE = {"00": "Não informado", "01": "ME", "03": "EPP", "05": "Demais"}
+BASE_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "base")
+
+PRESETS = {
+    "solar": {
+        "ufs": ["SP"],
+        "sem_mei": True,
+        "so_com_contato": True,
+        "cnaes": [
+            "4711301", "4711302", "4712100",
+            "1091102", "4721102", "5611201", "5611203",
+            "9313100", "5510801", "5510802",
+            "4731800", "4722901", "1053800", "1052000", "9601701",
+            "8610101", "8630501", "8630502", "8630503", "8630504", "8640202", "8640205",
+            "8112500", "8511200", "8512100", "8513900", "8520100",
+            "4771701", "4520001",
+            "2539001", "2222600", "1813001",
+            "0155501", "0155505", "0154700",
+            "5211701", "5211799", "9491000",
+        ],
+    },
+}
 
 csv.field_size_limit(sys.maxsize)
 
@@ -34,7 +57,7 @@ def _zips(prefixo):
 
 def baixar(mes, log=print):
     os.makedirs(CNPJ_DIR, exist_ok=True)
-    arquivos = ["Cnaes.zip", "Municipios.zip"] + [f"Empresas{i}.zip" for i in range(10)] + [f"Estabelecimentos{i}.zip" for i in range(10)]
+    arquivos = ["Cnaes.zip", "Municipios.zip", "Simples.zip"] + [f"Empresas{i}.zip" for i in range(10)] + [f"Estabelecimentos{i}.zip" for i in range(10)]
     for nome in arquivos:
         destino = os.path.join(CNPJ_DIR, nome)
         if os.path.exists(destino):
@@ -52,9 +75,10 @@ def baixar(mes, log=print):
         os.replace(destino + ".part", destino)
 
 
-def importar(ufs=None, cnae_prefixos=None, log=print):
+def importar(ufs=None, cnae_prefixos=None, sem_mei=False, so_com_contato=False, log=print):
     ufs = {u.upper() for u in ufs or []}
     cnae_prefixos = tuple(cnae_prefixos or ())
+    leve = bool(cnae_prefixos)
     if not _zips("Estabelecimentos"):
         raise FileNotFoundError(f"Nenhum Estabelecimentos*.zip em {CNPJ_DIR}")
 
@@ -92,7 +116,9 @@ def importar(ufs=None, cnae_prefixos=None, log=print):
                 continue
             tel1 = (r[21] + r[22]) if r[22] else ""
             tel2 = (r[23] + r[24]) if r[24] else ""
-            lote.append((r[0] + r[1] + r[2], r[0], r[4], r[10], r[11], r[12], f"{r[13]} {r[14]}".strip(), r[15], r[16],
+            if so_com_contato and not (tel1 or tel2 or r[27].strip()):
+                continue
+            lote.append((r[0] + r[1] + r[2], r[0], r[4], r[10], r[11], "" if leve else r[12], f"{r[13]} {r[14]}".strip(), r[15], r[16],
                          r[17], r[18], r[19], r[20], tel1, tel2, r[27].lower()))
             basicos.add(r[0])
             if len(lote) >= 50000:
@@ -103,10 +129,30 @@ def importar(ufs=None, cnae_prefixos=None, log=print):
         total += len(lote)
         log(f"  {total:,} estabelecimentos ativos até agora".replace(",", "."))
 
+    if sem_mei:
+        zs = _zips("Simples")
+        if not zs:
+            log("Simples.zip não encontrado: não dá pra tirar os MEI, seguindo com eles.")
+        else:
+            meis = set()
+            for zp in zs:
+                log(f"lendo {os.path.basename(zp)} (identificando MEI)...")
+                meis.update(r[0] for r in _linhas(zp) if len(r) >= 5 and r[4] == "S" and r[0] in basicos)
+            if meis:
+                con.execute("CREATE TEMP TABLE meis (basico TEXT PRIMARY KEY)")
+                con.executemany("INSERT OR IGNORE INTO meis VALUES (?)", ((b,) for b in meis))
+                con.execute("DELETE FROM estab WHERE basico IN (SELECT basico FROM meis)")
+                basicos -= meis
+                total = con.execute("SELECT COUNT(*) FROM estab").fetchone()[0]
+                log(f"  {len(meis):,} MEI removidos, ficaram {total:,}".replace(",", "."))
+
     for zp in _zips("Empresas"):
         log(f"lendo {os.path.basename(zp)}...")
         lote = [(r[0], r[1], r[5], r[4]) for r in _linhas(zp) if len(r) >= 6 and r[0] in basicos]
         con.executemany("INSERT OR IGNORE INTO empresas VALUES (?,?,?,?)", lote)
+
+    if leve:
+        con.execute("DELETE FROM cnaes WHERE codigo NOT IN (SELECT DISTINCT cnae FROM estab)")
 
     log("criando índices...")
     con.executescript("""
@@ -115,12 +161,47 @@ def importar(ufs=None, cnae_prefixos=None, log=print):
         CREATE INDEX ix_estab_abertura ON estab (abertura);
     """)
     con.commit()
+    con.execute("VACUUM")
     con.close()
     log(f"pronto: {total:,} estabelecimentos em {INDICE}".replace(",", "."))
 
 
+def importar_preset(nome, log=print):
+    cfg = PRESETS[nome]
+    importar(cfg["ufs"], cfg["cnaes"], cfg["sem_mei"], cfg["so_com_contato"], log)
+    return publicar(nome, log)
+
+
+def publicar(nome, log=print):
+    os.makedirs(BASE_DIR, exist_ok=True)
+    destino = os.path.join(BASE_DIR, f"indice_{nome}.db.gz")
+    with open(INDICE, "rb") as f, gzip.open(destino, "wb", compresslevel=9) as g:
+        shutil.copyfileobj(f, g, 1 << 20)
+    mb = os.path.getsize(destino) / 1e6
+    log(f"base compactada em {os.path.relpath(destino)} ({mb:.1f} MB)")
+    if mb > 95:
+        log("ATENÇÃO: passou de 95 MB, o GitHub recusa arquivos acima de 100 MB. Reduza os CNAEs ou a UF.")
+    return destino
+
+
+def instalar_base(log=print):
+    if os.path.exists(INDICE):
+        return True
+    pacotes = sorted(glob.glob(os.path.join(BASE_DIR, "indice_*.db.gz")))
+    if not pacotes:
+        return False
+    os.makedirs(CNPJ_DIR, exist_ok=True)
+    log(f"descompactando {os.path.basename(pacotes[0])}...")
+    with gzip.open(pacotes[0], "rb") as g, open(INDICE + ".part", "wb") as f:
+        shutil.copyfileobj(g, f, 1 << 20)
+    os.replace(INDICE + ".part", INDICE)
+    return True
+
+
 def cnaes_por_termo(con, termo):
     termo = sem_acento(termo).strip()
+    if termo in ("*", "todos", "tudo", "todas"):
+        return [r[0] for r in con.execute("SELECT codigo FROM cnaes")]
     if re.fullmatch(r"[\d,\s./-]+", termo):
         return [re.sub(r"\D", "", c) for c in termo.split(",") if re.sub(r"\D", "", c)]
     palavras = [w for w in re.split(r"\s+", termo) if len(w) > 2]
@@ -132,8 +213,8 @@ def cnaes_por_termo(con, termo):
 
 
 def buscar(p, log):
-    if not os.path.exists(INDICE):
-        log(f"Índice CNPJ não encontrado. Rode antes: python cli.py cnpj-importar --uf {p.get('uf') or 'SP'}")
+    if not instalar_base(log):
+        log("Base CNPJ não encontrada. No seu PC rode: python cli.py cnpj-baixar AAAA-MM e depois python cli.py cnpj-importar --preset solar")
         return
     con = sqlite3.connect(INDICE)
     con.row_factory = sqlite3.Row

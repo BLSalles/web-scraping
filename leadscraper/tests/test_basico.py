@@ -197,3 +197,44 @@ def test_sem_navegador(monkeypatch):
     logs = []
     assert list(google_maps.buscar({"nicho": "x", "cidade": "y", "limite": 5}, logs.append)) == []
     assert "desligado" in logs[0]
+
+
+def test_preset_solar_ponta_a_ponta(ambiente, monkeypatch):
+    from leads.sources import cnpj
+    d = ambiente / "cnpj"
+    d.mkdir()
+    monkeypatch.setattr(cnpj, "BASE_DIR", str(ambiente / "base"))
+    _zip(d / "Cnaes.zip", "c.csv", [["4711302", "Comércio varejista de mercadorias em geral - supermercados"],
+                                    ["5611201", "Restaurantes e similares"], ["6201501", "Desenvolvimento de software"]])
+    _zip(d / "Municipios.zip", "m.csv", [["7171", "SUZANO"]])
+
+    def est(basico, cnae, tel, email, uf="SP"):
+        r = [""] * 30
+        r[0], r[1], r[2], r[4], r[5], r[10], r[11], r[12] = basico, "0001", "90", "F" + basico, "02", "20200101", cnae, "4711301,5611203"
+        r[19], r[20], r[21], r[22], r[27] = uf, "7171", "11", tel, email
+        return r
+
+    _zip(d / "Estabelecimentos0.zip", "e.csv", [
+        est("10000001", "4711302", "47471111", ""),
+        est("10000002", "5611201", "", "x@y.com.br"),
+        est("10000003", "5611201", "", ""),
+        est("10000004", "5611201", "47472222", ""),
+        est("10000005", "6201501", "47473333", ""),
+        est("10000006", "4711302", "47474444", "", uf="RJ"),
+    ])
+    _zip(d / "Empresas0.zip", "emp.csv", [["10000001", "MERCADO UM LTDA", "2062", "49", "1,00", "03", ""],
+                                         ["10000004", "FULANO MEI", "2135", "50", "1,00", "01", ""]])
+    _zip(d / "Simples.zip", "s.csv", [["10000004", "S", "20200101", "", "S", "20200101", ""],
+                                      ["10000001", "S", "20200101", "", "N", "", ""]])
+    monkeypatch.setitem(cnpj.PRESETS, "teste", {"ufs": ["SP"], "sem_mei": True, "so_com_contato": True, "cnaes": ["4711302", "5611201"]})
+
+    destino = cnpj.importar_preset("teste", log=lambda *_: None)
+    assert destino.endswith("indice_teste.db.gz") and os.path.exists(destino)
+
+    os.remove(cnpj.INDICE)
+    out = list(cnpj.buscar({"nicho": "todos", "cidade": "Suzano", "uf": "SP", "limite": 50}, lambda *_: None))
+    assert sorted(l.cnpj[:8] for l in out) == ["10000001", "10000002"]
+    assert os.path.exists(cnpj.INDICE)
+    mercado = next(l for l in out if l.cnpj.startswith("10000001"))
+    assert mercado.razao_social == "MERCADO UM LTDA" and mercado.porte == "EPP"
+    assert [l.cnpj[:8] for l in cnpj.buscar({"nicho": "supermercados", "cidade": "Suzano", "uf": "SP", "limite": 50}, lambda *_: None)] == ["10000001"]
