@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LeadScraper</title>
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--txt:#1d2433;--sub:#667085;--borda:#e3e6eb;--pri:#1f6feb;--ok:#16a34a;--wa:#1fa855;--ruim:#dc2626}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt)}
+header{background:#111827;color:#fff;padding:14px 20px;display:flex;gap:20px;align-items:center;flex-wrap:wrap}
+header b{font-size:17px}
+nav button{background:none;border:0;color:#9ca3af;font:inherit;padding:6px 10px;cursor:pointer;border-radius:6px}
+nav button.ativo{color:#fff;background:#374151}
+main{max-width:1200px;margin:0 auto;padding:20px 16px}
+.aba{display:none}.aba.ativo{display:block}
+.card{background:var(--card);border:1px solid var(--borda);border-radius:10px;padding:18px;margin-bottom:16px}
+h2{font-size:15px;margin:0 0 12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+label{display:block;font-size:12px;color:var(--sub);margin-bottom:4px}
+input,select,textarea{width:100%;padding:8px 10px;border:1px solid var(--borda);border-radius:7px;font:inherit;background:#fff}
+textarea{resize:vertical}
+.fontes{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.fonte{border:1px solid var(--borda);border-radius:8px;padding:10px 12px;cursor:pointer;display:flex;gap:10px}
+.fonte input{width:auto;margin-top:3px}
+.fonte small{display:block;color:var(--sub)}
+.extra{display:none;margin-top:12px;padding-top:12px;border-top:1px dashed var(--borda)}
+.extra.on{display:block}
+.chk{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--txt)}
+.chk input{width:auto}
+button.btn{background:var(--pri);color:#fff;border:0;padding:9px 16px;border-radius:7px;font:inherit;font-weight:600;cursor:pointer}
+button.sec{background:#fff;color:var(--txt);border:1px solid var(--borda)}
+button.wa{background:var(--wa)}
+button.ruim{background:#fff;color:var(--ruim);border:1px solid #fecaca}
+button:disabled{opacity:.45;cursor:not-allowed}
+pre#log{background:#0b1020;color:#c7d2fe;padding:12px;border-radius:8px;max-height:260px;overflow:auto;font-size:12px;white-space:pre-wrap;margin:0}
+.barra{display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-bottom:12px}
+.barra>div{min-width:160px}
+.tabela{overflow:auto;max-height:65vh;border:1px solid var(--borda);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:13px;background:#fff}
+th,td{padding:7px 9px;border-bottom:1px solid var(--borda);text-align:left;vertical-align:top;white-space:nowrap}
+th{position:sticky;top:0;background:#f9fafb;font-weight:600}
+td.nome{white-space:normal;min-width:200px}
+td a{color:var(--pri);text-decoration:none}
+.tag{display:inline-block;padding:1px 7px;border-radius:99px;background:#eef2ff;color:#3730a3;font-size:11px;margin-right:3px}
+.cont{display:flex;gap:14px;flex-wrap:wrap;color:var(--sub);font-size:13px}
+.cont b{color:var(--txt)}
+.aviso{background:#fffbeb;border:1px solid #fde68a;color:#92400e;padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:12px}
+.fila-card{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:760px){.fila-card{grid-template-columns:1fr}}
+.acoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.grande{font-size:18px;font-weight:600}
+.muted{color:var(--sub)}
+</style>
+</head>
+<body>
+<header>
+  <b>LeadScraper</b>
+  <nav>
+    <button data-aba="buscar" class="ativo">Buscar</button>
+    <button data-aba="leads">Leads</button>
+    <button data-aba="wa">WhatsApp</button>
+  </nav>
+</header>
+
+<main>
+<section id="buscar" class="aba ativo">
+  <div class="card">
+    <h2>O que você procura</h2>
+    <div class="grid">
+      <div><label>Nicho / segmento *</label><input id="nicho" placeholder="ex.: clínica odontológica"></div>
+      <div><label>Cidade</label><input id="cidade" placeholder="ex.: Mogi das Cruzes"></div>
+      <div><label>UF</label><input id="uf" maxlength="2" placeholder="SP"></div>
+      <div><label>Limite por fonte</label><input id="limite" type="number" value="50" min="1" max="2000"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Fontes</h2>
+    <div class="fontes">
+      <label class="fonte"><input type="checkbox" value="google_maps" checked><div><b>Google Maps</b><small>{{ "Places API configurada" if tem_api_maps else "via navegador (sem chave de API)" }}</small></div></label>
+      <label class="fonte"><input type="checkbox" value="cnpj"><div><b>Base CNPJ (Receita)</b><small>{{ "índice pronto" if tem_indice_cnpj else "precisa importar a base antes" }}</small></div></label>
+      <label class="fonte"><input type="checkbox" value="sites"><div><b>Sites específicos</b><small>cole URLs para varrer</small></div></label>
+      <label class="fonte"><input type="checkbox" value="diretorios"><div><b>Diretórios</b><small>{{ diretorios|length }} configurado(s) no diretorios.yaml</small></div></label>
+    </div>
+
+    <div class="extra" data-de="cnpj">
+      <div class="grid">
+        <div><label>Código(s) CNAE (opcional, separados por vírgula)</label><input id="cnae" placeholder="ex.: 8630504, 8630501"></div>
+        <div><label>Aberta desde</label><input id="aberta_desde" type="date"></div>
+        <div><label>Porte</label>
+          <select id="porte" multiple size="3"><option value="01">ME</option><option value="03">EPP</option><option value="05">Demais</option></select></div>
+      </div>
+      <div style="display:flex;gap:16px;margin-top:10px;flex-wrap:wrap">
+        <label class="chk"><input type="checkbox" id="so_com_contato" checked> só com telefone ou e-mail</label>
+        <label class="chk"><input type="checkbox" id="cnae_secundario"> incluir CNAE secundário</label>
+      </div>
+    </div>
+    <div class="extra" data-de="sites">
+      <label>URLs (uma por linha)</label><textarea id="urls" rows="4" placeholder="empresa1.com.br&#10;empresa2.com.br"></textarea>
+    </div>
+    <div class="extra" data-de="diretorios">
+      <label>Diretórios</label>
+      <select id="diretorios" multiple size="3">{% for d in diretorios %}<option selected>{{ d }}</option>{% endfor %}</select>
+    </div>
+    <div class="extra" data-de="google_maps">
+      <label class="chk"><input type="checkbox" id="mostrar_navegador"> mostrar o navegador enquanto busca (só local)</label>
+    </div>
+
+    <div style="display:flex;gap:16px;align-items:center;margin-top:16px;flex-wrap:wrap">
+      <label class="chk"><input type="checkbox" id="enriquecer" checked> visitar os sites encontrados atrás de e-mail, WhatsApp e redes</label>
+      <button class="btn" id="btnBuscar">Buscar leads</button>
+    </div>
+  </div>
+
+  <div class="card"><h2>Andamento</h2><pre id="log">Nenhuma busca ainda.</pre></div>
+</section>
+
+<section id="leads" class="aba">
+  <div class="card">
+    <div class="barra">
+      <div><label>Busca</label><select id="fBusca"><option value="">todas</option></select></div>
+      <div><label>Status</label><select id="fStatus"><option value="">todos</option>{% for s in status %}<option>{{ s }}</option>{% endfor %}</select></div>
+      <div style="flex:1"><label>Texto</label><input id="fTexto" placeholder="nome, bairro, e-mail..."></div>
+      <button class="btn sec" id="btnFiltrar">Filtrar</button>
+      <button class="btn sec" onclick="exportar('xlsx')">Excel</button>
+      <button class="btn sec" onclick="exportar('csv')">CSV</button>
+    </div>
+    <div class="cont" id="contagem"></div>
+  </div>
+  <div class="tabela"><table><thead><tr>
+    <th>Nome</th><th>Telefone</th><th>WhatsApp</th><th>E-mail</th><th>Site / redes</th><th>Cidade</th><th>Nota</th><th>Fontes</th><th>Status</th><th></th>
+  </tr></thead><tbody id="tbody"></tbody></table></div>
+</section>
+
+<section id="wa" class="aba">
+  <div class="aviso">Envio manual assistido: o sistema abre a conversa com o texto pronto e você aperta enviar. Respeite o intervalo e o limite diário para não ter o número bloqueado, e sempre ofereça a opção de sair.</div>
+  <div class="card">
+    <div class="barra">
+      <div style="flex:1"><label>Modelo</label><select id="modeloSel"></select></div>
+      <div><label>Nome do modelo</label><input id="modeloNome"></div>
+      <button class="btn sec" id="btnNovoModelo">Novo</button>
+      <button class="btn sec" id="btnSalvarModelo">Salvar modelo</button>
+    </div>
+    <label>Texto <span class="muted" id="vars"></span></label>
+    <textarea id="modeloTexto" rows="6"></textarea>
+  </div>
+
+  <div class="card">
+    <div class="barra">
+      <div><label>Busca</label><select id="filaBusca"><option value="">todas</option></select></div>
+      <div><label>Abrir em</label><select id="filaWeb"><option value="1">WhatsApp Web</option><option value="0">App (wa.me)</option></select></div>
+      <div><label>Limite por dia</label><input id="limiteDia" type="number" value="30" min="1"></div>
+      <div><label>Intervalo mínimo (s)</label><input id="intervalo" type="number" value="60" min="0"></div>
+      <button class="btn" id="btnFila">Carregar fila</button>
+    </div>
+    <div class="cont" id="filaInfo"></div>
+  </div>
+
+  <div class="card" id="filaCard" style="display:none">
+    <div class="fila-card">
+      <div>
+        <div class="grande" id="fNome"></div>
+        <div class="muted" id="fDet"></div>
+        <div class="acoes">
+          <button class="btn wa" id="btnAbrir">Abrir conversa</button>
+          <button class="btn" id="btnEnviei">Enviei ✓ próximo</button>
+          <button class="btn sec" id="btnPular">Pular</button>
+          <button class="btn ruim" id="btnOptout">Não contatar</button>
+        </div>
+        <p class="muted" id="espera"></p>
+      </div>
+      <div><label>Mensagem (pode ajustar antes de abrir)</label><textarea id="fMsg" rows="9"></textarea></div>
+    </div>
+  </div>
+</section>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const api = (url, opt={}) => fetch(url, {headers:{'Content-Type':'application/json'}, ...opt}).then(r => r.json());
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fone = d => d ? `(${d.slice(2,4)}) ${d.slice(4,-4)}-${d.slice(-4)}` : '';
+const STATUS = {{ status|list|tojson }};
+
+$$('nav button').forEach(b => b.onclick = () => {
+  $$('nav button, .aba').forEach(x => x.classList.remove('ativo'));
+  b.classList.add('ativo'); $('#' + b.dataset.aba).classList.add('ativo');
+  if (b.dataset.aba === 'leads') carregarLeads();
+  if (b.dataset.aba === 'wa') carregarModelos();
+});
+
+const sincExtras = () => $$('.fonte input').forEach(i => $(`.extra[data-de="${i.value}"]`)?.classList.toggle('on', i.checked));
+$$('.fonte input').forEach(i => i.onchange = sincExtras); sincExtras();
+
+$('#btnBuscar').onclick = async () => {
+  const fontes = $$('.fonte input:checked').map(i => i.value);
+  const corpo = {
+    nicho: $('#nicho').value, cidade: $('#cidade').value, uf: $('#uf').value, limite: $('#limite').value, fontes,
+    cnae: $('#cnae').value, aberta_desde: $('#aberta_desde').value, porte: [...$('#porte').selectedOptions].map(o => o.value),
+    so_com_contato: $('#so_com_contato').checked, cnae_secundario: $('#cnae_secundario').checked,
+    urls: $('#urls').value, diretorios: [...$('#diretorios').selectedOptions].map(o => o.value),
+    mostrar_navegador: $('#mostrar_navegador').checked, enriquecer: $('#enriquecer').checked,
+  };
+  const r = await api('/api/buscar', {method:'POST', body: JSON.stringify(corpo)});
+  if (r.erro) return alert(r.erro);
+  $('#btnBuscar').disabled = true;
+  const t = setInterval(async () => {
+    const j = await api('/api/job/' + r.job);
+    $('#log').textContent = j.log.join('\n') || 'iniciando...';
+    $('#log').scrollTop = 1e9;
+    if (j.status !== 'rodando') { clearInterval(t); $('#btnBuscar').disabled = false; }
+  }, 1500);
+};
+
+function query() {
+  return new URLSearchParams({busca: $('#fBusca').value, status: $('#fStatus').value, texto: $('#fTexto').value}).toString();
+}
+function exportar(fmt) { location.href = `/exportar.${fmt}?` + query(); }
+
+function preencherBuscas(sel, lista) {
+  const atual = sel.value;
+  sel.innerHTML = '<option value="">todas</option>' + lista.map(b => `<option>${esc(b)}</option>`).join('');
+  sel.value = atual;
+}
+
+async function carregarLeads() {
+  const r = await api('/api/leads?' + query());
+  preencherBuscas($('#fBusca'), r.buscas); preencherBuscas($('#filaBusca'), r.buscas);
+  $('#contagem').innerHTML = `<span><b>${r.leads.length}</b> exibidos</span>` + Object.entries(r.contagem).map(([k,v]) => `<span>${k}: <b>${v}</b></span>`).join('');
+  $('#tbody').innerHTML = r.leads.map(l => `<tr>
+    <td class="nome"><b>${esc(l.nome)}</b>${l.razao_social && l.razao_social !== l.nome ? `<br><span class="muted">${esc(l.razao_social)}</span>` : ''}${l.cnpj ? `<br><span class="muted">${l.cnpj}</span>` : ''}</td>
+    <td>${fone(l.telefone)}${l.telefones_extras.length ? `<br><span class="muted">+${l.telefones_extras.length}</span>` : ''}</td>
+    <td>${l.whatsapp ? `<a href="https://wa.me/${l.whatsapp}" target="wa">${fone(l.whatsapp)}</a>` : ''}${l.optout ? ' <span class="tag">opt-out</span>' : ''}</td>
+    <td>${esc(l.email)}${l.emails_extras.length ? `<br><span class="muted">+${l.emails_extras.length}</span>` : ''}</td>
+    <td>${l.site ? `<a href="${esc(l.site)}" target="_blank">site</a> ` : ''}${l.instagram ? `<a href="${esc(l.instagram)}" target="_blank">insta</a> ` : ''}${l.facebook ? `<a href="${esc(l.facebook)}" target="_blank">fb</a> ` : ''}${l.linkedin ? `<a href="${esc(l.linkedin)}" target="_blank">in</a> ` : ''}${l.maps_url ? `<a href="${esc(l.maps_url)}" target="_blank">mapa</a>` : ''}</td>
+    <td>${esc(l.bairro)}${l.bairro ? '<br>' : ''}${esc(l.cidade)} ${esc(l.uf)}</td>
+    <td>${l.nota ?? ''}${l.avaliacoes ? ` <span class="muted">(${l.avaliacoes})</span>` : ''}</td>
+    <td>${l.fontes.map(f => `<span class="tag">${esc(f)}</span>`).join('')}</td>
+    <td><select onchange="mudarStatus(${l.id}, this.value)">${STATUS.map(s => `<option ${s===l.status?'selected':''}>${s}</option>`).join('')}</select></td>
+    <td><button class="btn sec" style="padding:4px 8px" onclick="excluir(${l.id})">×</button></td>
+  </tr>`).join('');
+}
+$('#btnFiltrar').onclick = carregarLeads;
+$('#fTexto').onkeydown = e => e.key === 'Enter' && carregarLeads();
+async function mudarStatus(id, s) { await api(`/api/leads/${id}/status`, {method:'POST', body: JSON.stringify({status:s})}); }
+async function excluir(id) { if (confirm('Excluir lead?')) { await api('/api/leads/' + id, {method:'DELETE'}); carregarLeads(); } }
+
+let MODELOS = [];
+async function carregarModelos() {
+  const r = await api('/api/modelos');
+  MODELOS = r.modelos;
+  $('#vars').textContent = '— variáveis: ' + r.variaveis.map(v => `{${v}}`).join(' ');
+  const atual = $('#modeloSel').value;
+  $('#modeloSel').innerHTML = MODELOS.map(m => `<option value="${m.id}">${esc(m.nome)}</option>`).join('');
+  if (atual) $('#modeloSel').value = atual;
+  mostrarModelo();
+  const l = await api('/api/leads'); preencherBuscas($('#filaBusca'), l.buscas);
+}
+function mostrarModelo() {
+  const m = MODELOS.find(m => m.id == $('#modeloSel').value) || {nome:'', texto:''};
+  $('#modeloNome').value = m.nome; $('#modeloTexto').value = m.texto;
+}
+$('#modeloSel').onchange = mostrarModelo;
+$('#btnNovoModelo').onclick = () => { $('#modeloSel').value = ''; $('#modeloNome').value = 'Novo modelo'; $('#modeloTexto').value = ''; };
+$('#btnSalvarModelo').onclick = async () => {
+  const r = await api('/api/modelos', {method:'POST', body: JSON.stringify({id: $('#modeloSel').value || null, nome: $('#modeloNome').value, texto: $('#modeloTexto').value})});
+  MODELOS = r.modelos;
+  $('#modeloSel').innerHTML = MODELOS.map(m => `<option value="${m.id}">${esc(m.nome)}</option>`).join('');
+  $('#modeloSel').value = MODELOS.find(m => m.nome === $('#modeloNome').value)?.id ?? MODELOS.at(-1).id;
+};
+
+try { $('#limiteDia').value = localStorage.limiteDia || 30; $('#intervalo').value = localStorage.intervalo || 60; } catch {}
+$('#limiteDia').onchange = () => { try { localStorage.limiteDia = $('#limiteDia').value } catch {} };
+$('#intervalo').onchange = () => { try { localStorage.intervalo = $('#intervalo').value } catch {} };
+
+let FILA = [], POS = 0, HOJE = 0, LIBERA = 0, TIMER;
+$('#btnFila').onclick = async () => {
+  if (!$('#modeloSel').value) return alert('Salve um modelo primeiro');
+  const p = new URLSearchParams({modelo: $('#modeloSel').value, busca: $('#filaBusca').value, web: $('#filaWeb').value});
+  const r = await api('/api/fila?' + p);
+  FILA = r.fila; POS = 0; HOJE = r.hoje;
+  mostrarFila();
+};
+function mostrarFila() {
+  const lim = +$('#limiteDia').value;
+  $('#filaInfo').innerHTML = `<span>na fila: <b>${Math.max(FILA.length - POS, 0)}</b></span><span>enviados hoje: <b>${HOJE}</b> / ${lim}</span>`;
+  const l = FILA[POS];
+  $('#filaCard').style.display = l ? '' : 'none';
+  if (!l) { if (FILA.length) alert('Fila concluída'); return; }
+  $('#fNome').textContent = l.nome;
+  $('#fDet').textContent = `${fone(l.whatsapp)} · ${l.cidade || ''}`;
+  $('#fMsg').value = l.texto;
+  $('#btnEnviei').disabled = true;
+  atualizarEspera();
+}
+function atualizarEspera() {
+  clearInterval(TIMER);
+  const tick = () => {
+    const falta = Math.ceil((LIBERA - Date.now()) / 1000);
+    const bloqueadoDia = HOJE >= +$('#limiteDia').value;
+    $('#btnAbrir').disabled = falta > 0 || bloqueadoDia;
+    $('#espera').textContent = bloqueadoDia ? 'Limite diário atingido. Continue amanhã.' : falta > 0 ? `Aguarde ${falta}s para a próxima conversa.` : '';
+    if (falta <= 0) clearInterval(TIMER);
+  };
+  tick(); TIMER = setInterval(tick, 1000);
+}
+$('#btnAbrir').onclick = () => {
+  const l = FILA[POS];
+  const web = $('#filaWeb').value === '1';
+  const txt = encodeURIComponent($('#fMsg').value);
+  const url = web ? `https://web.whatsapp.com/send?phone=${l.whatsapp}&text=${txt}` : `https://wa.me/${l.whatsapp}?text=${txt}`;
+  window.open(url, 'wa');
+  $('#btnEnviei').disabled = false;
+};
+$('#btnEnviei').onclick = async () => {
+  const r = await api(`/api/leads/${FILA[POS].id}/status`, {method:'POST', body: JSON.stringify({status:'contatado'})});
+  HOJE = r.hoje;
+  const base = +$('#intervalo').value * 1000;
+  LIBERA = Date.now() + base + Math.random() * base * 0.5;
+  POS++; mostrarFila();
+};
+$('#btnPular').onclick = () => { POS++; mostrarFila(); };
+$('#btnOptout').onclick = async () => {
+  await api(`/api/leads/${FILA[POS].id}/optout`, {method:'POST'});
+  POS++; mostrarFila();
+};
+</script>
+</body>
+</html>

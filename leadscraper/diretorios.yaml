@@ -1,0 +1,16 @@
+# Cada entrada é um site de listagem de empresas.
+# Placeholders na URL: {nicho} {cidade} {uf} {nicho_slug} {cidade_slug}
+# Seletores são CSS. "seletor@atributo" pega um atributo (ex.: "a.site@href").
+# Antes de usar um site, confira os termos de uso dele e se o robots.txt permite.
+
+exemplo_guia:
+  url: "https://www.exemplo-guia.com.br/{uf}/{cidade_slug}/{nicho_slug}"
+  item: "div.resultado"
+  campos:
+    nome: "h2"
+    telefone: "span.telefone"
+    endereco: "address"
+    site: "a.website@href"
+  proxima: "a[rel=next]"
+  max_paginas: 5
+  respeitar_robots: true

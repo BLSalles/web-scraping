@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: leadscraper
+    runtime: docker
+    plan: starter
+    healthCheckPath: /saude
+    disk:
+      name: dados
+      mountPath: /var/data
+      sizeGB: 5
+    envVars:
+      - key: DB_PATH
+        value: /var/data/leads.db
+      - key: CNPJ_DIR
+        value: /var/data/cnpj
+      - key: APP_USER
+        value: admin
+      - key: APP_PASSWORD
+        sync: false
+      - key: GOOGLE_PLACES_API_KEY
+        sync: false
