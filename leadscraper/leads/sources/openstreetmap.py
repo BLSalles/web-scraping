@@ -7,7 +7,12 @@ from ..models import Lead
 from ..normalize import sem_acento
 
 NOME = "OpenStreetMap (grátis)"
-OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"]
+OVERPASS = [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter",
+    "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+]
 CHAVES_POI = "shop|amenity|office|craft|healthcare|tourism|leisure"
 
 MAPA = [
@@ -51,9 +56,9 @@ def tags_para(nicho):
 def montar_query(nicho, cidade, limite):
     termo = re.sub(r'["\\]', "", nicho).strip()
     filtros = [f'nwr(area.a)["{t}"]["name"];' for t in tags_para(nicho)]
-    filtros.append(f'nwr(area.a)["name"~"{termo}",i][~"^({CHAVES_POI})$"~"."];')
+    filtros += [f'nwr(area.a)["{k}"]["name"~"{termo}",i];' for k in CHAVES_POI.split("|")]
     return (
-        "[out:json][timeout:90];\n"
+        "[out:json][timeout:50];\n"
         f'area["boundary"="administrative"]["admin_level"="8"]["name"="{cidade}"]->.a;\n'
         "(\n  " + "\n  ".join(filtros) + "\n);\n"
         f"out center tags {limite};"
@@ -99,13 +104,13 @@ def buscar(p, log):
     dados = None
     for url in OVERPASS:
         try:
-            r = requests.post(url, data={"data": query}, headers={"User-Agent": USER_AGENT}, timeout=120)
+            r = requests.post(url, data={"data": query}, headers={"User-Agent": USER_AGENT}, timeout=60)
             if r.ok:
                 dados = r.json()
                 break
             log(f"{url.split('/')[2]} respondeu {r.status_code}, tentando outro servidor...")
         except requests.RequestException as e:
-            log(f"{url.split('/')[2]} falhou ({e.__class__.__name__}), tentando outro servidor...")
+            log(f"{url.split('/')[2]} falhou ({e.__class__.__name__}: {str(e)[:120]}), tentando outro servidor...")
     if dados is None:
         log("Nenhum servidor do OpenStreetMap respondeu. Tente de novo em alguns minutos.")
         return
