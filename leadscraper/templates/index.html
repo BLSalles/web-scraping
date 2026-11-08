@@ -206,11 +206,19 @@ $('#btnBuscar').onclick = async () => {
   const r = await api('/api/buscar', {method:'POST', body: JSON.stringify(corpo)});
   if (r.erro) return alert(r.erro);
   $('#btnBuscar').disabled = true;
+  let falhas = 0;
+  const parar = msg => { clearInterval(t); $('#btnBuscar').disabled = false; if (msg) $('#log').textContent += '\n\n' + msg; };
   const t = setInterval(async () => {
-    const j = await api('/api/job/' + r.job);
+    let j;
+    try { j = await api('/api/job/' + r.job); } catch { j = null; }
+    if (!j || j.erro) {
+      if (++falhas >= 4) parar('O servidor reiniciou no meio da busca e ela se perdeu (no plano gratuito isso costuma ser falta de memória). Tente um limite menor ou configure a chave da Places API.');
+      return;
+    }
+    falhas = 0;
     $('#log').textContent = j.log.join('\n') || 'iniciando...';
     $('#log').scrollTop = 1e9;
-    if (j.status !== 'rodando') { clearInterval(t); $('#btnBuscar').disabled = false; }
+    if (j.status !== 'rodando') parar();
   }, 1500);
 };
 

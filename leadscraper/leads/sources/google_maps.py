@@ -16,6 +16,14 @@ CAMPOS = ",".join([
 ])
 
 
+BLOQUEADOS = {"image", "media", "font"}
+ARGS_LEVES = [
+    "--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu", "--no-zygote", "--single-process",
+    "--disable-extensions", "--disable-background-networking", "--disable-component-update",
+    "--mute-audio", "--renderer-process-limit=1", "--js-flags=--max-old-space-size=160",
+]
+
+
 def buscar(p, log):
     consulta = f"{p['nicho']} em {p['cidade']} {p.get('uf', '')}".strip()
     if GOOGLE_PLACES_API_KEY:
@@ -77,8 +85,10 @@ def _via_navegador(consulta, p, log):
         return
 
     with sync_playwright() as pw:
-        browser = pw.chromium.launch(headless=p.get("headless", True))
-        page = browser.new_page(locale="pt-BR")
+        browser = pw.chromium.launch(headless=p.get("headless", True), args=ARGS_LEVES)
+        ctx = browser.new_context(locale="pt-BR", viewport={"width": 1000, "height": 700})
+        ctx.route("**/*", lambda rota: rota.abort() if rota.request.resource_type in BLOQUEADOS else rota.continue_())
+        page = ctx.new_page()
         page.goto(f"https://www.google.com/maps/search/{quote_plus(consulta)}?hl=pt-BR", wait_until="domcontentloaded")
         try:
             page.locator("form[action*='consent'] button").last.click(timeout=4000)
