@@ -51,14 +51,7 @@ input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--borda)
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--sol);box-shadow:0 0 0 3px rgba(245,158,11,.18)}
 textarea{resize:vertical}
 
-.fontes{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
-.fonte{border:1px solid var(--borda);border-radius:12px;padding:12px 14px;cursor:pointer;display:flex;gap:10px;margin:0;color:var(--txt);font-size:14px;transition:.15s}
-.fonte:hover{border-color:#d9c9a3}
-.fonte:has(input:checked){border-color:var(--sol);background:var(--sol-claro)}
-.fonte input,.chk input{width:auto;margin-top:3px;accent-color:var(--sol2)}
-.fonte small{display:block;color:var(--sub);font-size:12px;font-weight:400}
-.extra{display:none;margin-top:14px;padding-top:14px;border-top:1px dashed var(--borda)}
-.extra.on{display:block}
+.chk input{width:auto;margin-top:3px;accent-color:var(--sol2)}
 .chk{display:flex;gap:7px;align-items:center;font-size:13px;color:var(--txt);margin:0;font-weight:400}
 .rodape-busca{display:flex;gap:18px;align-items:center;margin-top:18px;flex-wrap:wrap}
 
@@ -153,47 +146,30 @@ td .btn.sec{padding:4px 9px;font-size:12px}
       <div><label>Segmento *</label><input id="nicho" placeholder="ex.: supermercado"></div>
       <div><label>Cidade</label><input id="cidade" placeholder="ex.: Mogi das Cruzes"></div>
       <div><label>UF</label><input id="uf" maxlength="2" placeholder="SP" value="SP"></div>
-      <div><label>Quantidade por fonte</label><input id="limite" type="number" value="50" min="1" max="2000"></div>
+      <div><label>Quantidade de empresas</label><input id="limite" type="number" value="50" min="1" max="2000"></div>
     </div>
   </div>
 
   <div class="card">
-    <h2>De onde buscar</h2>
-    <p class="desc">Marque uma ou mais fontes. Os resultados são unificados e os duplicados somem.</p>
-    <div class="fontes">
-      <label class="fonte"><input type="checkbox" value="cnpj" {{ "checked" if tem_indice_cnpj else "" }}><div><b>Base CNPJ (Receita)</b><small>{{ "pronta: empresas ativas com contato" if tem_indice_cnpj else "precisa gerar a base antes" }}</small></div></label>
-      <label class="fonte"><input type="checkbox" value="openstreetmap" {{ "" if tem_indice_cnpj else "checked" }}><div><b>OpenStreetMap</b><small>grátis; cobertura varia por cidade</small></div></label>
-      <label class="fonte"><input type="checkbox" value="google_maps" {{ "checked" if tem_api_maps else "" }}><div><b>Google Maps</b><small>{{ "Places API configurada" if tem_api_maps else ("precisa de chave de API aqui" if sem_navegador else "via navegador") }}</small></div></label>
-      <label class="fonte"><input type="checkbox" value="sites"><div><b>Sites específicos</b><small>cole endereços para varrer</small></div></label>
-      <label class="fonte"><input type="checkbox" value="diretorios"><div><b>Diretórios</b><small>{{ diretorios|length }} configurado(s)</small></div></label>
+    <h2>Filtros</h2>
+    <p class="desc">O SolarLeads busca em todas as fontes sozinho (Google Maps, OpenStreetMap, base CNPJ), junta os resultados, tira os duplicados e completa e-mail e WhatsApp pelos sites.</p>
+    <div style="display:flex;gap:18px;flex-wrap:wrap">
+      <label class="chk"><input type="checkbox" id="so_com_contato" checked> só com telefone, WhatsApp ou e-mail</label>
+      <label class="chk"><input type="checkbox" id="so_whatsapp"> só com WhatsApp</label>
+      <label class="chk"><input type="checkbox" id="so_email"> só com e-mail</label>
     </div>
-
-    <div class="extra" data-de="cnpj">
-      <div class="grid">
-        <div><label>Código(s) CNAE</label><input id="cnae" placeholder="preenchido pelo segmento"></div>
+    <details style="margin-top:14px">
+      <summary class="muted" style="cursor:pointer">Mais filtros</summary>
+      <div class="grid" style="margin-top:12px">
+        <div><label>Nota mínima no Google</label><select id="nota_min"><option value="">qualquer</option><option>3.5</option><option>4</option><option>4.5</option></select></div>
+        <div><label>Mínimo de avaliações</label><input id="min_avaliacoes" type="number" min="0" placeholder="ex.: 20"></div>
         <div><label>Aberta desde</label><input id="aberta_desde" type="date"></div>
         <div><label>Porte</label>
           <select id="porte" multiple size="3"><option value="01">ME</option><option value="03">EPP</option><option value="05">Demais (médio/grande)</option></select></div>
+        <div><label>Código(s) CNAE</label><input id="cnae" placeholder="preenchido pelo segmento"></div>
       </div>
-      <div style="display:flex;gap:18px;margin-top:12px;flex-wrap:wrap">
-        <label class="chk"><input type="checkbox" id="so_com_contato" checked> só com telefone ou e-mail</label>
-        <label class="chk"><input type="checkbox" id="cnae_secundario"> incluir CNAE secundário</label>
-      </div>
-    </div>
-    <div class="extra" data-de="sites">
-      <label>Endereços (um por linha)</label><textarea id="urls" rows="4" placeholder="empresa1.com.br&#10;empresa2.com.br"></textarea>
-    </div>
-    <div class="extra" data-de="diretorios">
-      <label>Diretórios</label>
-      <select id="diretorios" multiple size="3">{% for d in diretorios %}<option selected>{{ d }}</option>{% endfor %}</select>
-    </div>
-    <div class="extra" data-de="google_maps">
-      <label class="chk"><input type="checkbox" id="mostrar_navegador"> mostrar o navegador enquanto busca (só no PC)</label>
-    </div>
-
+    </details>
     <div class="rodape-busca">
-      <label class="chk"><input type="checkbox" id="enriquecer" checked> buscar e-mail e WhatsApp nos sites</label>
-      <label class="chk"><input type="checkbox" id="opencnpj" checked> completar pelo CNPJ</label>
       <button class="btn ml-auto" id="btnBuscar">☀ Buscar empresas</button>
     </div>
   </div>
@@ -289,17 +265,13 @@ $$('.chip').forEach(c => c.onclick = () => {
 });
 $('#nicho').oninput = () => { $$('.chip').forEach(x => x.classList.remove('on')); $('#cnae').value = ''; };
 
-const sincExtras = () => $$('.fonte input').forEach(i => $(`.extra[data-de="${i.value}"]`)?.classList.toggle('on', i.checked));
-$$('.fonte input').forEach(i => i.onchange = sincExtras); sincExtras();
 
 $('#btnBuscar').onclick = async () => {
-  const fontes = $$('.fonte input:checked').map(i => i.value);
   const corpo = {
-    nicho: $('#nicho').value, cidade: $('#cidade').value, uf: $('#uf').value, limite: $('#limite').value, fontes,
+    nicho: $('#nicho').value, cidade: $('#cidade').value, uf: $('#uf').value, limite: $('#limite').value,
+    so_com_contato: $('#so_com_contato').checked, so_whatsapp: $('#so_whatsapp').checked, so_email: $('#so_email').checked,
+    nota_min: $('#nota_min').value, min_avaliacoes: $('#min_avaliacoes').value,
     cnae: $('#cnae').value, aberta_desde: $('#aberta_desde').value, porte: [...$('#porte').selectedOptions].map(o => o.value),
-    so_com_contato: $('#so_com_contato').checked, cnae_secundario: $('#cnae_secundario').checked,
-    urls: $('#urls').value, diretorios: [...$('#diretorios').selectedOptions].map(o => o.value),
-    mostrar_navegador: $('#mostrar_navegador').checked, enriquecer: $('#enriquecer').checked, opencnpj: $('#opencnpj').checked,
   };
   const r = await api('/api/buscar', {method:'POST', body: JSON.stringify(corpo)});
   if (r.erro) return alert(r.erro);
@@ -310,7 +282,7 @@ $('#btnBuscar').onclick = async () => {
     let j;
     try { j = await api('/api/job/' + r.job); } catch { j = null; }
     if (!j || j.erro) {
-      if (++falhas >= 4) parar('O servidor reiniciou no meio da busca e ela se perdeu (no plano gratuito isso costuma ser falta de memória). Tente um limite menor ou configure a chave da Places API.');
+      if (++falhas >= 4) parar('O servidor reiniciou no meio da busca e ela se perdeu (no plano gratuito isso costuma ser falta de memória). Tente uma quantidade menor.');
       return;
     }
     falhas = 0;

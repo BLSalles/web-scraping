@@ -7,3 +7,4 @@ data/
 *.db
 *.zip
 .pytest_cache/
+google-maps-scraper-kit/

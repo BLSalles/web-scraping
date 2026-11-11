@@ -5,6 +5,7 @@ import requests
 from .. import USER_AGENT
 from ..models import Lead
 from ..normalize import sem_acento
+from ..segmentos import expandir
 
 NOME = "OpenStreetMap (grátis)"
 OVERPASS = [
@@ -98,6 +99,12 @@ def buscar(p, log):
     if not p.get("cidade"):
         log("OpenStreetMap precisa da cidade preenchida.")
         return
+    termos = expandir(p["nicho"])
+    for termo in termos:
+        yield from _buscar_termo(dict(p, nicho=termo, limite=max(1, p["limite"] // len(termos))), log)
+
+
+def _buscar_termo(p, log):
     query = montar_query(p["nicho"], p["cidade"], p["limite"])
     tags = tags_para(p["nicho"])
     log(f"OpenStreetMap: {p['nicho']} em {p['cidade']}" + (f" (categorias: {', '.join(x.replace(chr(34), '') for x in tags)})" if tags else " (busca pelo nome)"))

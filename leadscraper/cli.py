@@ -15,7 +15,7 @@ def main():
     b.add_argument("nicho")
     b.add_argument("--cidade", default="")
     b.add_argument("--uf", default="")
-    b.add_argument("--fontes", default="google_maps", help=f"separadas por vírgula: {','.join(FONTES)}")
+    b.add_argument("--fontes", default="", help=f"opcional, separadas por vírgula ({','.join(FONTES)}); vazio = todas")
     b.add_argument("--limite", type=int, default=50)
     b.add_argument("--cnae", default="")
     b.add_argument("--urls", default="")
@@ -43,7 +43,7 @@ def main():
     if a.cmd == "buscar":
         params = dict(nicho=a.nicho, cidade=a.cidade, uf=a.uf.upper(), limite=a.limite, cnae=a.cnae, urls=a.urls,
                       so_com_contato=True, headless=True)
-        rodar(params, [f.strip() for f in a.fontes.split(",") if f.strip() in FONTES], not a.sem_enriquecer)
+        rodar(params, [f.strip() for f in a.fontes.split(",") if f.strip() in FONTES] or None, not a.sem_enriquecer)
     elif a.cmd == "cnpj-baixar":
         cnpj.baixar(a.mes)
     elif a.cmd == "cnpj-importar":

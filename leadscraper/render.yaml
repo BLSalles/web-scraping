@@ -17,5 +17,3 @@ services:
         value: admin
       - key: APP_PASSWORD
         sync: false
-      - key: GOOGLE_PLACES_API_KEY
-        sync: false

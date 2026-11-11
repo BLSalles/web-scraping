@@ -1,14 +1,16 @@
 # LeadScraper
 
-Captação de leads B2B com cinco fontes selecionáveis, painel web e fila de abordagem por WhatsApp (manual assistida, sem API).
+Captação de leads B2B com painel web e fila de abordagem por WhatsApp (manual assistida, sem API). O usuário só informa segmento, cidade e filtros: o sistema busca em todas as fontes sozinho, junta, tira duplicados, completa os contatos e devolve os melhores leads primeiro.
 
 | Fonte | O que traz | Observação |
 |---|---|---|
 | OpenStreetMap | nome, telefone, WhatsApp, site, e-mail, endereço | Grátis, sem chave e sem navegador (API Overpass). Cobertura no Brasil é menor que a do Google, varia por cidade |
-| Google Maps | nome, telefone, site, endereço, nota, nº de avaliações | Com `GOOGLE_PLACES_API_KEY` usa a Places API oficial; sem chave, usa navegador (Playwright) |
+| Google Maps | nome, telefone, e-mail, site, redes, endereço, nota, nº de avaliações | Motor do [google-maps-scraper-kit](https://github.com/Mahanaicoach/google-maps-scraper-kit) (MIT), sem chave de API. Acima de ~120 por segmento divide a cidade em áreas |
 | Base CNPJ (Receita) | razão social, CNPJ, CNAE, porte, abertura, telefone e e-mail cadastrados | Dados abertos; precisa importar a base uma vez |
-| Sites | e-mails, WhatsApp, Instagram/Facebook/LinkedIn, CNPJ | Varre home + páginas de contato, respeita robots.txt |
-| Diretórios | o que o site de listagem mostrar | Configurável por seletor CSS em `diretorios.yaml` |
+| Sites | e-mails, WhatsApp, Instagram/Facebook/LinkedIn, CNPJ | Roda sempre nos sites encontrados; lista manual de URLs só pela linha de comando |
+| Diretórios | o que o site de listagem mostrar | Entra automaticamente quando houver um diretório configurado em `diretorios.yaml` (o `exemplo_guia` é ignorado) |
+
+A base CNPJ entra automaticamente quando o índice existe. Filtros da tela: só com contato / WhatsApp / e-mail, nota mínima e mínimo de avaliações no Google, porte, data de abertura e CNAE.
 
 Leads com CNPJ são completados pelo [OpenCNPJ](https://opencnpj.org) (grátis, consulta por CNPJ). Os resultados de todas as fontes são unificados (CNPJ, domínio, telefone e nome+cidade) e, opcionalmente, os sites encontrados são visitados para completar e-mail e WhatsApp.
 
@@ -18,12 +20,12 @@ Leads com CNPJ são completados pelo [OpenCNPJ](https://opencnpj.org) (grátis, 
 python -m venv .venv
 .venv\Scripts\activate          # Windows  (Linux/Mac: source .venv/bin/activate)
 pip install -r requirements.txt
-playwright install chromium
+git clone --depth 1 --branch v2.3.2 https://github.com/Mahanaicoach/google-maps-scraper-kit.git
 copy .env.example .env          # Linux/Mac: cp
 python app.py
 ```
 
-Abra http://localhost:5000
+Abra http://localhost:5000. Na primeira busca o app sobe o motor do Google Maps sozinho (porta 8080). Precisa do Google Chrome instalado; sem ele, o kit baixa o Chrome for Testing (~100 MB) uma vez.
 
 ## Base CNPJ
 
@@ -66,7 +68,7 @@ O painel aplica intervalo mínimo aleatório entre conversas e limite diário. Q
 ## Linha de comando
 
 ```bash
-python cli.py buscar "clínica odontológica" --cidade Suzano --uf SP --fontes google_maps,cnpj --limite 100
+python cli.py buscar "clínica odontológica" --cidade Suzano --uf SP --limite 100   # --fontes é opcional; sem ele usa todas
 python cli.py exportar leads.xlsx
 ```
 
@@ -74,7 +76,7 @@ python cli.py exportar leads.xlsx
 
 1. Suba o projeto no GitHub.
 2. No Render: **New > Blueprint**, escolha o repositório (ele lê o `render.yaml`).
-3. Preencha `APP_PASSWORD`, defina `SEM_NAVEGADOR=1` no plano gratuito (512 MB não comportam o navegador) (senha do painel; usuário padrão `admin`) e, se tiver, `GOOGLE_PLACES_API_KEY`.
+3. Preencha `APP_PASSWORD` (senha do painel; usuário padrão `admin`). A imagem já instala o Chromium e o kit. O Chrome do Google Maps precisa de memória: no plano de 512 MB ele pode derrubar o app; se acontecer, suba o plano ou defina `SEM_NAVEGADOR=1` para desligar só o Google Maps.
 
 O blueprint usa plano pago com disco de 5 GB em `/var/data`, onde ficam o banco e a base CNPJ. No plano gratuito o app dorme sem uso e o disco é apagado a cada deploy, então os leads se perdem.
 
@@ -84,7 +86,7 @@ Base CNPJ no servidor: rode `cnpj-importar` localmente com filtro de UF/CNAE e e
 
 - O foco é B2B (dados de empresas). Telefone/e-mail de MEI e empresário individual podem ser dado pessoal: trate com base em legítimo interesse, use só para oferta relacionada ao negócio e sempre ofereça saída.
 - Não raspe sites que proíbem nos termos de uso; o raspador respeita `robots.txt` por padrão.
-- O scraping do Google Maps via navegador é frágil (o layout muda) e vai contra os termos do Google; para uso contínuo prefira a Places API.
+- O scraping do Google Maps vai contra os termos do Google e o uso pesado pode bloquear o IP por algumas horas (o motor espera e tenta de novo, depois para e guarda o que achou). Buscas grandes demoram: ~20 lugares por página, alguns minutos por segmento.
 
 ## Testes
 

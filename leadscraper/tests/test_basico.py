@@ -199,6 +199,55 @@ def test_sem_navegador(monkeypatch):
     assert "desligado" in logs[0]
 
 
+def test_google_maps_pelo_kit(monkeypatch):
+    import json as _json
+    from leads.sources import google_maps
+    importlib.reload(google_maps)
+    criados, apagados = [], []
+    linha = {"title": "Padaria Sol", "phone": "(11) 98765-4321", "emails": "oi@sol.com.br, vendas@sol.com.br",
+             "website": "https://sol.com.br", "address": "Rua A, 1 - Centro, Suzano - SP", "review_rating": "4.6",
+             "review_count": "87", "place_id": "p1", "link": "https://maps/p1", "instagram": "https://instagram.com/sol",
+             "complete_address": _json.dumps({"borough": "Centro", "city": "Suzano", "postal_code": "08670-000", "state": "SP"})}
+
+    class R:
+        def __init__(self, d, ok=True): self.d, self.ok, self.status_code, self.text = d, ok, 200, ""
+        def json(self): return self.d
+        @property
+        def content(self): return b"x"
+
+    def api(metodo, caminho, **kw):
+        if metodo == "POST":
+            criados.append(kw["json"])
+            return R({"id": "j1"})
+        if metodo == "DELETE":
+            apagados.append(caminho)
+            return R({})
+        if caminho.endswith("/download"):
+            return R([linha, dict(linha), dict(linha, title="Padaria Lua", place_id="p2", phone="1133334444")])
+        return R({"Status": "ok", "Progress": {"places": 3, "stage": "done"}})
+
+    monkeypatch.setattr(google_maps, "_api", api)
+    monkeypatch.setattr(google_maps, "garantir_motor", lambda log: True)
+    monkeypatch.setattr(google_maps.time, "sleep", lambda s: None)
+    out = list(google_maps.buscar({"nicho": "todos", "cidade": "Suzano", "uf": "SP", "limite": 50}, print))
+    assert len(out) == 2 and apagados == ["/api/v1/jobs/j1"]
+    corpo = criados[0]
+    assert corpo["keywords"][0] == "supermercado em Suzano SP" and len(corpo["keywords"]) == 11
+    assert corpo["lang"] == "pt" and corpo["email"] and corpo["socials"]
+    l = out[0]
+    assert (l.nome, l.email, l.emails_extras, l.bairro, l.cep, l.nota, l.avaliacoes) == (
+        "Padaria Sol", "oi@sol.com.br", ["vendas@sol.com.br"], "Centro", "08670-000", 4.6, 87)
+
+
+def test_pipeline_filtra_e_ordena():
+    from leads.models import Lead
+    from leads.pipeline import filtrar
+    leads = [Lead(nome="a"), Lead(nome="b", telefone="551133334444", nota=3.0),
+             Lead(nome="c", whatsapp="5511987654321", nota=4.8), Lead(nome="d", email="x@y.com")]
+    out = filtrar(leads, {"limite": 10, "so_com_contato": True, "nota_min": 4})
+    assert [l.nome for l in out] == ["c", "d"]
+
+
 def test_preset_solar_ponta_a_ponta(ambiente, monkeypatch):
     from leads.sources import cnpj
     d = ambiente / "cnpj"

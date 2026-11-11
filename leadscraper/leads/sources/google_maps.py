@@ -1,157 +1,203 @@
-import re
+import glob
+import json
+import math
+import os
+import subprocess
+import sys
 import time
-from urllib.parse import quote_plus
 
 import requests
 
-from .. import GOOGLE_PLACES_API_KEY, SEM_NAVEGADOR
+from .. import KIT_API_KEY, KIT_DIR, KIT_URL, SEM_NAVEGADOR, USER_AGENT
 from ..models import Lead
+from ..segmentos import expandir
 
 NOME = "Google Maps"
-API_URL = "https://places.googleapis.com/v1/places:searchText"
-CAMPOS = ",".join([
-    "places.id", "places.displayName", "places.formattedAddress", "places.addressComponents",
-    "places.nationalPhoneNumber", "places.websiteUri", "places.rating", "places.userRatingCount",
-    "places.googleMapsUri", "nextPageToken",
-])
+POR_PAGINA = 20
+TETO_BUSCA = 120
+MAX_GRADE = 4
+_processo = None
 
 
-BLOQUEADOS = {"image", "media", "font"}
-ARGS_LEVES = [
-    "--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu", "--no-zygote", "--single-process",
-    "--disable-extensions", "--disable-background-networking", "--disable-component-update",
-    "--mute-audio", "--renderer-process-limit=1", "--js-flags=--max-old-space-size=160",
-]
+def _headers():
+    return {"X-API-Key": KIT_API_KEY} if KIT_API_KEY else {}
 
 
-def buscar(p, log):
-    consulta = f"{p['nicho']} em {p['cidade']} {p.get('uf', '')}".strip()
-    if GOOGLE_PLACES_API_KEY:
-        log(f"Google Maps (API): {consulta}")
-        yield from _via_api(consulta, p, log)
-    elif SEM_NAVEGADOR:
-        log("Google Maps sem chave de API está desligado neste servidor (pouca memória para abrir navegador). "
-            "Use a fonte OpenStreetMap ou configure GOOGLE_PLACES_API_KEY.")
-    else:
-        log(f"Google Maps (navegador): {consulta}")
-        yield from _via_navegador(consulta, p, log)
+def _api(metodo, caminho, **kw):
+    return requests.request(metodo, KIT_URL + caminho, headers=_headers(), timeout=kw.pop("timeout", 30), **kw)
 
 
-def _componente(comps, tipo):
-    for c in comps or []:
-        if tipo in c.get("types", []):
-            return c.get("shortText") or c.get("longText", "")
+def _no_ar():
+    try:
+        return _api("GET", "/api/v1/jobs", timeout=3).ok
+    except requests.RequestException:
+        return False
+
+
+def _chrome():
+    if os.getenv("CHROME"):
+        return os.environ["CHROME"]
+    for c in ["/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome",
+              *glob.glob("/ms-playwright/chromium-*/chrome-linux*/chrome")]:
+        if os.path.exists(c):
+            return c
     return ""
 
 
-def _via_api(consulta, p, log):
-    headers = {"X-Goog-Api-Key": GOOGLE_PLACES_API_KEY, "X-Goog-FieldMask": CAMPOS, "Content-Type": "application/json"}
-    body = {"textQuery": consulta, "languageCode": "pt-BR", "regionCode": "BR", "pageSize": 20}
-    total = 0
-    while total < p["limite"]:
-        r = requests.post(API_URL, json=body, headers=headers, timeout=20)
-        if not r.ok:
-            log(f"Places API erro {r.status_code}: {r.text[:200]}")
+def garantir_motor(log):
+    global _processo
+    if _no_ar():
+        return True
+    serve = os.path.join(KIT_DIR, "engine", "serve.py")
+    if not os.path.exists(serve):
+        log(f"Motor do Google Maps não encontrado em {KIT_DIR}. Clone o google-maps-scraper-kit ou ajuste KIT_DIR.")
+        return False
+    if _processo is None or _processo.poll() is not None:
+        porta = KIT_URL.rsplit(":", 1)[-1].strip("/")
+        env = dict(os.environ, SCRAPER_PORT=porta, SCRAPER_NO_UPDATE_CHECK="1")
+        if _chrome():
+            env["CHROME"] = _chrome()
+        log("iniciando o motor do Google Maps...")
+        _processo = subprocess.Popen([sys.executable, serve, "--port", porta], cwd=KIT_DIR, env=env,
+                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    for _ in range(60):
+        if _no_ar():
+            return True
+        if _processo.poll() is not None:
+            break
+        time.sleep(1)
+    log("O motor do Google Maps não subiu.")
+    return False
+
+
+def _geocodificar(cidade, uf):
+    try:
+        r = requests.get("https://nominatim.openstreetmap.org/search", timeout=20, headers={"User-Agent": USER_AGENT},
+                         params={"format": "json", "limit": 1, "countrycodes": "br", "q": f"{cidade}, {uf}".strip(", ")})
+        hits = r.json() if r.ok else []
+        return [float(x) for x in hits[0]["boundingbox"]] if hits else None
+    except (requests.RequestException, ValueError, KeyError):
+        return None
+
+
+def _grade(bbox, n):
+    s, nn, w, e = bbox
+    dlat, dlon = (nn - s) / n, (e - w) / n
+    celulas = []
+    for i in range(n):
+        for j in range(n):
+            lat, lon = s + (i + 0.5) * dlat, w + (j + 0.5) * dlon
+            largura = max(1.0, dlon * 111195 * math.cos(math.radians(lat)))
+            zoom = round(math.log2(156543.03 * math.cos(math.radians(lat)) * 1000 / largura))
+            celulas.append({"lat": f"{lat:.6f}", "lon": f"{lon:.6f}", "zoom": min(17, max(11, zoom))})
+    return celulas
+
+
+def _rodar_job(corpo, log):
+    r = _api("POST", "/api/v1/jobs", json=corpo)
+    if not r.ok:
+        log(f"Google Maps recusou a busca ({r.status_code}): {r.text[:200]}")
+        return []
+    jid = r.json()["id"]
+    limite_espera = time.time() + corpo["max_time"] + 180
+    ultimo = None
+    try:
+        while time.time() < limite_espera:
+            time.sleep(4)
+            j = _api("GET", f"/api/v1/jobs/{jid}").json()
+            prog = j.get("Progress") or {}
+            msg = f"  Google Maps: {prog.get('places', 0)} lugares ({prog.get('stage', '')})"
+            if msg != ultimo and prog.get("stage") not in (None, "queued"):
+                log(msg)
+                ultimo = msg
+            if j.get("Status") in ("ok", "failed"):
+                if j.get("Error"):
+                    log(f"  aviso do Google Maps: {j['Error'][:200]}")
+                break
+        d = _api("GET", f"/api/v1/jobs/{jid}/download", params={"format": "json"}, timeout=60)
+        return d.json() if d.ok and d.content.strip() else []
+    finally:
+        try:
+            _api("DELETE", f"/api/v1/jobs/{jid}")
+        except requests.RequestException:
+            pass
+
+
+def _para_lead(r, p):
+    emails = [e.strip() for e in (r.get("emails") or "").split(",") if e.strip()]
+    try:
+        comp = json.loads(r.get("complete_address") or "{}")
+    except ValueError:
+        comp = {}
+    if not isinstance(comp, dict):
+        comp = {}
+    try:
+        nota = float(r.get("review_rating") or 0) or None
+    except ValueError:
+        nota = None
+    try:
+        avaliacoes = int(float(r.get("review_count") or 0)) or None
+    except ValueError:
+        avaliacoes = None
+    return Lead(
+        nome=r.get("title", ""),
+        telefone=r.get("phone", ""),
+        email=emails[0] if emails else "",
+        emails_extras=emails[1:],
+        site=r.get("website", ""),
+        instagram=r.get("instagram", ""),
+        facebook=r.get("facebook", ""),
+        linkedin=r.get("linkedin", ""),
+        endereco=r.get("address", ""),
+        bairro=comp.get("borough", ""),
+        cidade=comp.get("city") or p.get("cidade", ""),
+        uf=p.get("uf", "") or comp.get("state", "")[:2],
+        cep=comp.get("postal_code", ""),
+        nota=nota,
+        avaliacoes=avaliacoes,
+        maps_url=r.get("link", ""),
+        fontes=["google_maps"],
+    )
+
+
+def buscar(p, log):
+    if SEM_NAVEGADOR:
+        log("Google Maps desligado neste servidor (SEM_NAVEGADOR=1).")
+        return
+    if not garantir_motor(log):
+        return
+    local = " ".join(x for x in (p.get("cidade"), p.get("uf")) if x)
+    termos = expandir(p["nicho"])
+    palavras = [f"{t} em {local}".strip() if local else t for t in termos]
+    por_termo = max(1, math.ceil(p["limite"] / len(termos)))
+    depth = min(math.ceil(por_termo / POR_PAGINA), TETO_BUSCA // POR_PAGINA)
+    corpo = {"name": f"leadscraper {p['nicho']} {local}", "keywords": palavras, "lang": "pt", "country": "br",
+             "depth": depth, "email": True, "socials": True, "max_time": 120 + 40 * depth * len(palavras)}
+
+    celulas = [{}]
+    if por_termo > TETO_BUSCA and p.get("cidade"):
+        bbox = _geocodificar(p["cidade"], p.get("uf", ""))
+        if bbox:
+            n = min(MAX_GRADE, math.ceil(math.sqrt(por_termo / 100)))
+            celulas = _grade(bbox, n)
+            log(f"Google Maps: cidade dividida em {n}x{n} áreas para passar do limite de ~120 por busca")
+
+    vistos, total = set(), 0
+    for i, cel in enumerate(celulas, 1):
+        if len(celulas) > 1:
+            log(f"  área {i}/{len(celulas)}")
+        log(f"Google Maps: {', '.join(palavras[:3])}{'...' if len(palavras) > 3 else ''}")
+        try:
+            linhas = _rodar_job({**corpo, **cel}, log)
+        except requests.RequestException as e:
+            log(f"Google Maps falhou: {e.__class__.__name__}")
             return
-        data = r.json()
-        for pl in data.get("places", []):
-            comps = pl.get("addressComponents")
-            yield Lead(
-                nome=pl.get("displayName", {}).get("text", ""),
-                telefone=pl.get("nationalPhoneNumber", ""),
-                site=pl.get("websiteUri", ""),
-                endereco=pl.get("formattedAddress", ""),
-                bairro=_componente(comps, "sublocality"),
-                cidade=_componente(comps, "administrative_area_level_2") or p["cidade"],
-                uf=_componente(comps, "administrative_area_level_1") or p.get("uf", ""),
-                cep=_componente(comps, "postal_code"),
-                nota=pl.get("rating"),
-                avaliacoes=pl.get("userRatingCount"),
-                maps_url=pl.get("googleMapsUri", ""),
-                fontes=["google_maps"],
-            )
+        for r in linhas:
+            chave = r.get("place_id") or r.get("data_id") or r.get("link") or r.get("title")
+            if chave in vistos:
+                continue
+            vistos.add(chave)
+            yield _para_lead(r, p)
             total += 1
             if total >= p["limite"]:
                 return
-        token = data.get("nextPageToken")
-        if not token:
-            return
-        body["pageToken"] = token
-        time.sleep(2)
-
-
-def _via_navegador(consulta, p, log):
-    try:
-        from playwright.sync_api import sync_playwright
-    except ImportError:
-        log("Playwright não instalado. Rode: pip install playwright && playwright install chromium")
-        return
-
-    with sync_playwright() as pw:
-        browser = pw.chromium.launch(headless=p.get("headless", True), args=ARGS_LEVES)
-        ctx = browser.new_context(locale="pt-BR", viewport={"width": 1000, "height": 700})
-        ctx.route("**/*", lambda rota: rota.abort() if rota.request.resource_type in BLOQUEADOS else rota.continue_())
-        page = ctx.new_page()
-        page.goto(f"https://www.google.com/maps/search/{quote_plus(consulta)}?hl=pt-BR", wait_until="domcontentloaded")
-        try:
-            page.locator("form[action*='consent'] button").last.click(timeout=4000)
-        except Exception:
-            pass
-        try:
-            page.wait_for_selector("div[role='feed']", timeout=15000)
-        except Exception:
-            log("Lista de resultados não carregou (o Google pode ter mudado o layout ou pedido verificação).")
-            browser.close()
-            return
-
-        feed = page.locator("div[role='feed']")
-        links, parado = [], 0
-        while len(links) < p["limite"] and parado < 4:
-            antes = len(links)
-            for a in page.locator("div[role='feed'] a[href*='/maps/place/']").all():
-                href = a.get_attribute("href")
-                if href and href not in links:
-                    links.append(href)
-            if "Você chegou ao final" in feed.inner_text() or "reached the end" in feed.inner_text():
-                break
-            feed.evaluate("el => el.scrollBy(0, el.scrollHeight)")
-            page.wait_for_timeout(1800)
-            parado = parado + 1 if len(links) == antes else 0
-
-        log(f"{len(links[:p['limite']])} lugares encontrados, lendo detalhes...")
-        for href in links[:p["limite"]]:
-            try:
-                page.goto(href, wait_until="domcontentloaded")
-                page.wait_for_selector("h1", timeout=10000)
-                page.wait_for_timeout(800)
-                lead = Lead(nome=_txt(page, "h1"), maps_url=href, cidade=p["cidade"], uf=p.get("uf", ""), fontes=["google_maps"])
-                lead.endereco = _attr_label(page, "button[data-item-id='address']")
-                lead.telefone = _attr_label(page, "button[data-item-id^='phone:tel:']")
-                site = page.locator("a[data-item-id='authority']")
-                lead.site = site.first.get_attribute("href") if site.count() else ""
-                nota = page.locator("div.F7nice span[aria-hidden='true']")
-                if nota.count():
-                    lead.nota = float(nota.first.inner_text().replace(",", "."))
-                aval = page.locator("div.F7nice span[aria-label*='avalia']")
-                if aval.count():
-                    lead.avaliacoes = int(re.sub(r"\D", "", aval.first.get_attribute("aria-label")) or 0)
-                cep = re.search(r"\d{5}-?\d{3}", lead.endereco)
-                lead.cep = cep.group() if cep else ""
-                yield lead
-            except Exception as e:
-                log(f"Falha lendo um lugar: {e.__class__.__name__}")
-            page.wait_for_timeout(1200)
-        browser.close()
-
-
-def _txt(page, sel):
-    el = page.locator(sel)
-    return el.first.inner_text().strip() if el.count() else ""
-
-
-def _attr_label(page, sel):
-    el = page.locator(sel)
-    if not el.count():
-        return ""
-    label = el.first.get_attribute("aria-label") or ""
-    return label.split(":", 1)[-1].strip()

@@ -1,12 +1,8 @@
 from flask import Flask, Response, jsonify, render_template, request
 
-from leads import GOOGLE_PLACES_API_KEY, SEM_NAVEGADOR, db, whatsapp
+from leads import db, whatsapp
 from leads.export import csv_bytes, xlsx_bytes
 from leads.pipeline import JOBS, iniciar_job
-from leads.sources import FONTES, diretorio
-from leads.sources.cnpj import BASE_DIR, INDICE
-
-import glob
 import hmac
 import os
 
@@ -34,11 +30,6 @@ def saude():
 def index():
     return render_template(
         "index.html",
-        fontes={k: f.NOME for k, f in FONTES.items()},
-        diretorios=list(diretorio.carregar()),
-        tem_api_maps=bool(GOOGLE_PLACES_API_KEY),
-        sem_navegador=SEM_NAVEGADOR,
-        tem_indice_cnpj=os.path.exists(INDICE) or bool(glob.glob(os.path.join(BASE_DIR, "indice_*.db.gz"))),
         status=db.STATUS,
     )
 
@@ -46,24 +37,23 @@ def index():
 @app.post("/api/buscar")
 def buscar():
     b = request.get_json()
-    if not b.get("nicho") or not b.get("fontes"):
-        return jsonify(erro="Informe o nicho e pelo menos uma fonte"), 400
+    if not (b.get("nicho") or "").strip():
+        return jsonify(erro="Informe o segmento"), 400
     params = {
         "nicho": b["nicho"].strip(),
         "cidade": (b.get("cidade") or "").strip(),
         "uf": (b.get("uf") or "").strip().upper(),
         "limite": max(1, min(int(b.get("limite") or 50), 2000)),
         "cnae": b.get("cnae", ""),
-        "cnae_secundario": bool(b.get("cnae_secundario")),
         "so_com_contato": bool(b.get("so_com_contato")),
+        "so_whatsapp": bool(b.get("so_whatsapp")),
+        "so_email": bool(b.get("so_email")),
+        "nota_min": float(b.get("nota_min") or 0),
+        "min_avaliacoes": int(b.get("min_avaliacoes") or 0),
         "aberta_desde": b.get("aberta_desde", ""),
         "porte": b.get("porte") or [],
-        "urls": b.get("urls", ""),
-        "diretorios": b.get("diretorios") or [],
-        "headless": not b.get("mostrar_navegador"),
     }
-    fontes = [f for f in b["fontes"] if f in FONTES]
-    return jsonify(job=iniciar_job(params, fontes, bool(b.get("enriquecer", True)), bool(b.get("opencnpj", True))))
+    return jsonify(job=iniciar_job(params))
 
 
 @app.get("/api/job/<job_id>")
