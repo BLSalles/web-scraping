@@ -288,7 +288,8 @@ $('#btnBuscar').onclick = async () => {
     falhas = 0;
     $('#log').textContent = j.log.join('\n') || 'iniciando...';
     $('#log').scrollTop = 1e9;
-    if (j.status !== 'rodando') parar();
+    if (j.status === 'concluido') parar('✔ Busca concluída. Os leads estão na aba Meus leads.');
+    else if (j.status !== 'rodando') parar();
   }, 1500);
 };
 

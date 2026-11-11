@@ -2,7 +2,6 @@ import re
 
 import requests
 
-from .. import USER_AGENT
 from ..models import Lead
 from ..normalize import sem_acento
 from ..segmentos import expandir
@@ -14,6 +13,8 @@ OVERPASS = [
     "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
 ]
+HEADERS = {"User-Agent": "LeadScraper/1.0 (+https://github.com/BLSalles/web-scraping)",
+           "Referer": "https://github.com/BLSalles/web-scraping", "Accept": "application/json"}
 CHAVES_POI = "shop|amenity|office|craft|healthcare|tourism|leisure"
 
 MAPA = [
@@ -59,7 +60,7 @@ def montar_query(nicho, cidade, limite):
     filtros = [f'nwr(area.a)["{t}"]["name"];' for t in tags_para(nicho)]
     filtros += [f'nwr(area.a)["{k}"]["name"~"{termo}",i];' for k in CHAVES_POI.split("|")]
     return (
-        "[out:json][timeout:50];\n"
+        "[out:json][timeout:25];\n"
         f'area["boundary"="administrative"]["admin_level"="8"]["name"="{cidade}"]->.a;\n'
         "(\n  " + "\n  ".join(filtros) + "\n);\n"
         f"out center tags {limite};"
@@ -111,7 +112,7 @@ def _buscar_termo(p, log):
     dados = None
     for url in OVERPASS:
         try:
-            r = requests.post(url, data={"data": query}, headers={"User-Agent": USER_AGENT}, timeout=60)
+            r = requests.post(url, data={"data": query}, headers=HEADERS, timeout=(8, 30))
             if r.ok:
                 dados = r.json()
                 break
